@@ -7,6 +7,24 @@ library jsonx;
 import 'dart:mirrors';
 import 'dart:convert' show JSON, JsonEncoder;
 
+/* Created a generic class so you don't have to input type every time you want to decode to a concrete type.
+ * Usage would be...
+ * class User{ String name;  String password; }
+ * void main() {
+ *   var userJSONX = new JSONX<User>();
+ *   var p1 = new User();
+ *   p1.name = "FooBar";
+ *   p1.password = "monkey";
+ *   var json = userJSONX.encode(p);
+ *   print(json);
+ *   User p2 = userJSONX.decode(json);
+ *   print(p2.name);
+ *   if(p1.name != p2.name) throw new Exception("They don't match");
+ * }
+ * This would mean an instance per class type but possible caching could be used to reduce reflection calls.
+ */
+class JsonX<T>{
+  JsonX(){}
 /**
  * Decodes the JSON string [text].
  *
@@ -38,10 +56,10 @@ import 'dart:convert' show JSON, JsonEncoder;
  *     List<int> list = decode('[1,2,3]', type: <int>[].runtimeType);
  */
 // TODO: consider caching mirrors on [type].
-decode(String text, {reviver(key, value), Type type}) {
+decode(String text, {reviver(key, value)}) {
   var json = JSON.decode(text, reviver: reviver);
-  if (type == null) return json;
-  return _jsonToObject(json, reflectType(type));
+  //if (type == null) return json;
+  return _jsonToObject(json, reflectType(T));
 }
 
 /**
@@ -66,6 +84,7 @@ decode(String text, {reviver(key, value), Type type}) {
  *     print(encode(p));
  */
 String encode(object) => _ENCODER.convert(object);
+}
 
 const _EMTPY_SYMBOL = const Symbol('');
 
