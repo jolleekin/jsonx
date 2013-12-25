@@ -5,7 +5,36 @@
 library jsonx;
 
 import 'dart:mirrors';
-import 'dart:convert' show JSON, JsonEncoder;
+import 'dart:convert';
+
+/**
+ * [JsonxCodec] encodes objects of type [T] to JSON strings and decodes JSON
+ * strings to objects of type [T].
+ */
+class JsonxCodec<T> extends Codec<T, String> {
+  final _decoder = new JsonxDecoder<T>();
+  final _encoder = new JsonxEncoder<T>();
+
+  JsonxDecoder<T> get decoder => _decoder;
+
+  JsonxEncoder<T> get encoder => _encoder;
+}
+
+/**
+ * This class converts JSON strings into objects of type [T].
+ */
+class JsonxDecoder<T> extends Converter<String, T> {
+
+  T convert(String input) => decode(input, type: T);
+}
+
+/**
+ * This class converts objects of type [T] into JSON strings.
+ */
+class JsonxEncoder<T> extends Converter<T, String> {
+
+  String convert(T input) => encode(input);
+}
 
 /**
  * Decodes the JSON string [text].
@@ -37,11 +66,12 @@ import 'dart:convert' show JSON, JsonEncoder;
  *
  *     List<int> list = decode('[1,2,3]', type: <int>[].runtimeType);
  */
-// TODO: consider caching mirrors on [type].
 decode(String text, {reviver(key, value), Type type}) {
   var json = JSON.decode(text, reviver: reviver);
   if (type == null) return json;
-  return _jsonToObject(json, reflectType(type));
+  var mirror = _typeMirrors[type];
+  if (mirror == null) mirror = _typeMirrors[type] = reflectType(type);
+  return _jsonToObject(json, mirror);
 }
 
 /**
@@ -66,6 +96,10 @@ decode(String text, {reviver(key, value), Type type}) {
  *     print(encode(p));
  */
 String encode(object) => _ENCODER.convert(object);
+
+
+
+final _typeMirrors = <Type, TypeMirror>{};
 
 const _EMTPY_SYMBOL = const Symbol('');
 

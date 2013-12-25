@@ -4,73 +4,90 @@ class KeyedItem {
   String key;
 }
 
+class Contact {
+  String addressLine1;
+  String addressLine2;
+  String city;
+  String state;
+  String country;
+}
+
 class Person extends KeyedItem {
   String name;
   int age;
+  Contact contact;
   List<Person> children;
 }
 
-class Parser<T> {
-  final _listType = <T>[].runtimeType;
-
-  T parse(String text) => decode(text, type: T);
-
-  List<T> parseList(String text) => decode(text, type: _listType);
-}
-
 main() {
-  var c1 = new Person()
+  var contact = new Contact()
+      ..addressLine1 = '123 JACKSON ST'
+      ..city = 'DA NANG'
+      ..country = 'VIETNAM';
+
+  var child1 = new Person()
       ..key = 'child 1'
       ..name = 'child 1'
-      ..age = 5;
+      ..age = 5
+      ..contact = contact;
 
-  var c2 = new Person()
+  var child2 = new Person()
       ..key = 'child 2'
       ..name = 'child 2'
-      ..age = 8;
+      ..age = 8
+      ..contact = contact;
 
-  var p1 = new Person()
+  var parent1 = new Person()
       ..key = 'parent'
       ..name = 'parent'
       ..age = 40
-      ..children = [c1, c2];
+      ..contact = contact
+      ..children = [child1, child2];
 
-  var s1 = encode(p1);
-  var expected =
-      '{"key":"parent","name":"parent","age":40,"children":[' +
-      '{"key":"child 1","name":"child 1","age":5,"children":null},' +
-      '{"key":"child 2","name":"child 2","age":8,"children":null}]}';
+  var contactEncoded = '{'
+      '"addressLine1":"123 JACKSON ST",'
+      '"addressLine2":null,'
+      '"city":"DA NANG",'
+      '"state":null,'
+      '"country":"VIETNAM"'
+    '}';
+
+  var expected = '{'
+      '"key":"parent","name":"parent","age":40,"contact":$contactEncoded,'
+      '"children":['
+        '{"key":"child 1","name":"child 1","age":5,"contact":$contactEncoded,"children":null},'
+        '{"key":"child 2","name":"child 2","age":8,"contact":$contactEncoded,"children":null}'
+      ']'
+    '}';
+
+  //------------ encode --------------
+
+  var s1 = encode(parent1);
+
   assert(s1 == expected);
-  print('[encode - object] passed');
 
-  //
+  //------------ decode --------------
 
-  Person p2 = decode(s1, type: Person);
-  assert(p2.name == 'parent');
-  assert(p2.children.first.name == 'child 1');
-  print('[decode - object] passed');
-  //
+  Person parent2 = decode(s1, type: Person);
+  assert(parent2.name == 'parent');
+  assert(parent2.children.first.name == 'child 1');
+  assert(parent2.children.first.contact.country == 'VIETNAM');
 
-  var s2 = encode(p2);
+  //------------ re-encode --------------
+
+  var s2 = encode(parent2);
   assert(s2 == expected);
-  print('[encode - object] passed');
 
-  //
+  //----------- decode to generics ---------------
 
   List<String> list = decode('["green", "yellow", "orange"]',
       type: <String>[].runtimeType);
   assert(list.length == 3);
   assert(list[1] == 'yellow');
 
-  //
+  //------------ JsonxCodec --------------
 
-  var a = new Parser<Person>();
-
-  var p = a.parse('{"key":"1","name":"Tom","age":5}');
-  assert(p.name == 'Tom');
-
-  var l = a.parseList('[{"key":"1","name":"Tom","age":5}]');
-  assert(l.first.age == 5);
-
-  print('[decode - generics] passed');
+  var codec = new JsonxCodec<Person>();
+  assert(codec.encode(parent1) == expected);
+  assert(codec.decode(s1).contact.country == 'VIETNAM');
 }
