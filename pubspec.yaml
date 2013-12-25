@@ -1,9 +1,0 @@
-name: jsonx
-<<<<<<< HEAD
-version: 1.1.1
-=======
-version: 1.1.0
->>>>>>> e0ed8e4ea9ae10ba83f74c673ccbb17f2e4d96f7
-author: Man Hoang <jolleekin@outlook.com>
-description: An extended JSON library that supports the encoding and decoding of arbitrary objects.
-homepage: https://github.com/jolleekin/jsonx
