@@ -1,4 +1,4 @@
-#### 1.1.0
+#### 1.1.1
 -   Added JsonxCodec, JsonxDecoder, and JsonxEncoder
 -	Added TypeMirror caching to improve the performance of `decode`
 
