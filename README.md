@@ -76,7 +76,7 @@ Example:
         ..age = 5;
     print(encode(p)); // {"key":"2","name":"Jerry","age":5}
 
-# Using the Codec API
+# Use the Codec API
 
 The top level methods `decode` and `encode` provide a quick and handy way to do
 decoding and encoding. However, when there is a lot of encoding/decoding for a
@@ -116,3 +116,77 @@ Example:
     var codec = new JsonxCodec<Person>();
     var p = codec.decode('{ "key": "1", "name": "Tom", "age": 5 }');
     var s = codec.encode(p);
+
+# Customize the Behavior of Encoding and Decoding
+
+Starting from version 1.2.0, users can customize the behavior of encoding
+and decoding to further extend the capability of the library. But before jumping
+into that topic, let's understand how an object is encoded/decoded at a high level.
+
+                _objectToJson               JSON.encode
+    Dart object --------------> Json object --------------> Json string
+
+                _jsonToObject               JSON.decode
+    Dart object <-------------- Json object <-------------- Json string
+
+    Note: Json objects are objects that consist of only `null`, `num`, `bool`,
+    `String`, `List`, and `Map`.
+
+Before version 1.2.0, the behavior of `_objectToJson` and `_jsonToObject`
+methods is fixed and cannot be customized by users. However, starting from
+this version, customization is made possible thanks to the following two top
+level objects.
+
+    typedef Convert(input);
+    
+    /**
+     * This object allows users to provide their own json-to-object converters for
+     * specific types.
+     *
+     * By default, this object specifies a converter for [DateTime], which can be
+     * overwritten by users.
+     *
+     * NOTE:
+     * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
+     */
+    final jsonToObjects = <Type, Convert>{
+      DateTime: DateTime.parse
+    };
+    
+    /**
+     * This object allows users to provide their own object-to-json converters for
+     * specific types.
+     *
+     * By default, this object specifies a converter for [DateTime], which can be
+     * overwritten by users.
+     *
+     * NOTE:
+     * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
+     */
+    final objectToJsons = <Type, Convert>{
+      DateTime: (input) => input.toString()
+    };
+
+Example
+
+    class Enum {
+      final int _id;
+    
+      const Enum._(this._id);
+    
+      static const ONE = const Enum._(1);
+      static const TWO = const Enum._(2);
+    }
+    
+    // Register a converter that converts an [Enum] into an integer.
+    objectToJsons[Enum] = (Enum input) => input._id;
+  
+    // Register a converter that converts an integer into an [Enum].
+    jsonToObjects[Enum] = (int input) {
+      if (input == 1) return Enum.ONE;
+      if (input == 2) return Enum.TWO;
+      throw new ArgumentError('Unknown enum value [$input]');
+    };
+  
+    assert(encode(Enum.ONE) == '1');
+    assert(decode('1', type: Enum) == Enum.ONE);

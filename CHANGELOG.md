@@ -1,5 +1,8 @@
+#### 1.2.0
+- Added [jsonToObjects] and [objectToJsons]
+   
 #### 1.1.1
--   Added JsonxCodec, JsonxDecoder, and JsonxEncoder
+- Added JsonxCodec, JsonxDecoder, and JsonxEncoder
 -	Added TypeMirror caching to improve the performance of `decode`
 
 #### 1.0.9

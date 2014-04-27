@@ -99,11 +99,48 @@ String encode(object) => _ENCODER.convert(object);
 
 
 
+typedef Convert(input);
+
+/**
+ * This object allows users to provide their own json-to-object converters for
+ * specific types.
+ *
+ * By default, this object specifies a converter for [DateTime], which can be
+ * overwritten by users.
+ *
+ * NOTE:
+ * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
+ */
+final jsonToObjects = <Type, Convert>{
+  DateTime: DateTime.parse
+};
+
+/**
+ * This object allows users to provide their own object-to-json converters for
+ * specific types.
+ *
+ * By default, this object specifies a converter for [DateTime], which can be
+ * overwritten by users.
+ *
+ * NOTE:
+ * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
+ */
+final objectToJsons = <Type, Convert>{
+  DateTime: (input) => input.toString()
+};
+
+
+
 final _typeMirrors = <Type, TypeMirror>{};
 
 const _EMTPY_SYMBOL = const Symbol('');
 
 _jsonToObject(json, mirror) {
+  if (json == null) return null;
+
+  var convert = jsonToObjects[mirror.reflectedType];
+  if (convert != null) return convert(json);
+
   if (_isPrimitive(json)) return json;
 
   TypeMirror type;
@@ -128,23 +165,18 @@ _jsonToObject(json, mirror) {
     return result;
   }
 
+  // TODO: Consider using [mirror.instanceMembers].
   var setters = _getPublicSetters(mirror);
 
   for (var key in json.keys) {
     var name = new Symbol(key);
-
-//    See https://code.google.com/p/dart/issues/detail?id=15281
-//    var member = mirror.instanceMembers[name];
-//    if (!_isPublicSetter(member)) continue;
-
-    var member = setters[name];
-    if (member != null) {
-      type = member.type;
+    var decl = setters[name];
+    if (decl != null) {
+      type = decl.type;
     } else {
-      var n = new Symbol('$key=');
-      member = setters[n];
-      if (member != null) {
-        type = member.parameters.first.type;
+      decl = setters[new Symbol('$key=')];
+      if (decl != null) {
+        type = decl.parameters.first.type;
       } else {
         continue;
       }
@@ -160,8 +192,8 @@ final _objectMirror = reflectClass(Object);
 final _publicSetters = <ClassMirror, Map<Symbol, DeclarationMirror>>{};
 
 /**
- * Returns a map of public setters, including implicit setters, of an instance
- * of the class specified by [m].
+ * Returns a map of public setters, including fields, of an instance of the
+ * class specified by [m].
  *
  * The map includes setters that are inherited as well as those introduced by
  * the class itself.
@@ -184,8 +216,8 @@ Map<Symbol, DeclarationMirror> _getPublicSetters(ClassMirror m) {
 final _publicGetters = <ClassMirror, Map<Symbol, DeclarationMirror>>{};
 
 /**
- * Returns a map of public getters, including implicit getters, of an instance
- * of the class specified by [m].
+ * Returns a map of public getters, including fields, of an instance of the
+ * class specified by [m].
  *
  * The map includes getters that are inherited as well as those introduced by
  * the class itself.
@@ -205,42 +237,46 @@ Map<Symbol, DeclarationMirror> _getPublicGetters(ClassMirror m) {
   return r;
 }
 
-bool _isPublicVariable(DeclarationMirror v) {
-  return v is VariableMirror && !v.isStatic && !v.isPrivate && !v.isFinal;
-  // TODO: Add isConst when the bug is fixed.
-}
-
+/**
+ * Tests if [v] is a public setter or field.
+ */
 bool _isPublicSetter(DeclarationMirror v) {
   return (v is VariableMirror && !v.isStatic && !v.isPrivate && !v.isFinal) ||
          (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isSetter);
 }
 
+/**
+ * Tests if [v] is a public getter or field.
+ */
 bool _isPublicGetter(DeclarationMirror v) {
   return (v is VariableMirror && !v.isStatic && !v.isPrivate) ||
          (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isGetter);
 }
 
-bool _isPrimitive(v) {
-  return v is num || v is bool || v is String || v == null;
-}
+bool _isPrimitive(v) => v is num || v is bool || v is String;
 
-const _ENCODER = const JsonEncoder(_toEncodable);
+const _ENCODER = const JsonEncoder(_objectToJson);
 
-_toEncodable(object) {
+_objectToJson(object) {
   try {
     return object.toJson();
   } catch (_) {
-    return __toEncodable(object);
+    return __objectToJson(object);
   }
 }
 
-__toEncodable(object) {
+__objectToJson(object) {
+  if (object == null) return null;
+
+  var convert = objectToJsons[object.runtimeType];
+  if (convert != null) return convert(object);
+
   if (_isPrimitive(object)) return object;
 
   if (object is List) {
     var list = [];
     for (var e in object) {
-      list.add(__toEncodable(e));
+      list.add(__objectToJson(e));
     }
     return list;
   }
@@ -249,18 +285,19 @@ __toEncodable(object) {
 
   if (object is Map) {
     for (var key in object.keys) {
-      map[key] = __toEncodable(object[key]);
+      map[key] = __objectToJson(object[key]);
     }
     return map;
   }
 
   var instanceMirror = reflect(object);
 
+  // TODO: Consider using [instanceMirror.type.instanceMembers].
   var getters = _getPublicGetters(instanceMirror.type);
   for (var k in getters.keys) {
     var name = MirrorSystem.getName(k);
     var value = instanceMirror.getField(k).reflectee;
-    map[name] = __toEncodable(value);
+    map[name] = __objectToJson(value);
   }
 
   return map;
