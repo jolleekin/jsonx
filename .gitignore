@@ -132,6 +132,9 @@ publish/
 ## TODO: If you have NuGet Package Restore enabled, uncomment the next line
 packages/
 
+# dart pubspec.lock
+pubspec.lock
+
 # Windows Azure Build Output
 csx
 *.build.csdef
