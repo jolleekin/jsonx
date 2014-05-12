@@ -8,6 +8,18 @@ import 'dart:mirrors';
 import 'dart:convert';
 
 /**
+ * A helper class to retrieve the runtime type of a generic type.
+ *
+ * For example, to retrive the type of `List<int>`, use
+ *     const TypeHelper<List<int>>().type
+ */
+class TypeHelper<T> {
+  Type get type => T;
+
+  const TypeHelper();
+}
+
+/**
  * [JsonxCodec] encodes objects of type [T] to JSON strings and decodes JSON
  * strings to objects of type [T].
  */
@@ -16,7 +28,6 @@ class JsonxCodec<T> extends Codec<T, String> {
   final _encoder = new JsonxEncoder<T>();
 
   JsonxDecoder<T> get decoder => _decoder;
-
   JsonxEncoder<T> get encoder => _encoder;
 }
 
@@ -24,7 +35,6 @@ class JsonxCodec<T> extends Codec<T, String> {
  * This class converts JSON strings into objects of type [T].
  */
 class JsonxDecoder<T> extends Converter<String, T> {
-
   T convert(String input) => decode(input, type: T);
 }
 
@@ -32,7 +42,6 @@ class JsonxDecoder<T> extends Converter<String, T> {
  * This class converts objects of type [T] into JSON strings.
  */
 class JsonxEncoder<T> extends Converter<T, String> {
-
   String convert(T input) => encode(input);
 }
 
@@ -111,7 +120,7 @@ typedef Convert(input);
  * NOTE:
  * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
  */
-final jsonToObjects = <Type, Convert>{
+final jsonToObjects = <Type, Convert> {
   DateTime: DateTime.parse
 };
 
@@ -125,13 +134,13 @@ final jsonToObjects = <Type, Convert>{
  * NOTE:
  * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
  */
-final objectToJsons = <Type, Convert>{
+final objectToJsons = <Type, Convert> {
   DateTime: (input) => input.toString()
 };
 
 
 
-final _typeMirrors = <Type, TypeMirror>{};
+final _typeMirrors = <Type, TypeMirror> {};
 
 const _EMTPY_SYMBOL = const Symbol('');
 
@@ -144,52 +153,45 @@ _jsonToObject(json, mirror) {
   if (_isPrimitive(json)) return json;
 
   TypeMirror type;
+  var instance = mirror.newInstance(_EMTPY_SYMBOL, []);
+  var reflectee = instance.reflectee;
 
-  if (json is List) {
-    var result = [];
+  if (reflectee is List) {
     type = mirror.typeArguments.single;
     for (var value in json) {
-      result.add(_jsonToObject(value, type));
+      reflectee.add(_jsonToObject(value, type));
     }
-    return result;
-  }
-
-  var instanceMirror = mirror.newInstance(_EMTPY_SYMBOL, []);
-
-  if (instanceMirror.reflectee is Map) {
-    var result = {};
+  } else if (reflectee is Map) {
     type = mirror.typeArguments.last;
     for (var key in json.keys) {
-      result[key] = _jsonToObject(json[key], type);
+      reflectee[key] = _jsonToObject(json[key], type);
     }
-    return result;
-  }
+  } else {
+    // TODO: Consider using [mirror.instanceMembers].
+    var setters = _getPublicSetters(mirror);
 
-  // TODO: Consider using [mirror.instanceMembers].
-  var setters = _getPublicSetters(mirror);
-
-  for (var key in json.keys) {
-    var name = new Symbol(key);
-    var decl = setters[name];
-    if (decl != null) {
-      type = decl.type;
-    } else {
-      decl = setters[new Symbol('$key=')];
+    for (var key in json.keys) {
+      var name = new Symbol(key);
+      var decl = setters[name];
       if (decl != null) {
-        type = decl.parameters.first.type;
+        type = decl.type;
       } else {
-        continue;
+        decl = setters[new Symbol('$key=')];
+        if (decl != null) {
+          type = decl.parameters.first.type;
+        } else {
+          continue;
+        }
       }
+      instance.setField(name, _jsonToObject(json[key], type));
     }
-
-    instanceMirror.setField(name, _jsonToObject(json[key], type));
   }
-  return instanceMirror.reflectee;
+  return reflectee;
 }
 
 final _objectMirror = reflectClass(Object);
 
-final _publicSetters = <ClassMirror, Map<Symbol, DeclarationMirror>>{};
+final _publicSetters = <ClassMirror, Map<Symbol, DeclarationMirror>> {};
 
 /**
  * Returns a map of public setters, including fields, of an instance of the
@@ -201,7 +203,7 @@ final _publicSetters = <ClassMirror, Map<Symbol, DeclarationMirror>>{};
 Map<Symbol, DeclarationMirror> _getPublicSetters(ClassMirror m) {
   var r = _publicSetters[m];
   if (r == null) {
-    r = <Symbol, DeclarationMirror>{};
+    r = <Symbol, DeclarationMirror> {};
     if (m != _objectMirror) {
       r.addAll(_getPublicSetters(m.superclass));
       m.declarations.forEach((k, v) {
@@ -213,7 +215,7 @@ Map<Symbol, DeclarationMirror> _getPublicSetters(ClassMirror m) {
   return r;
 }
 
-final _publicGetters = <ClassMirror, Map<Symbol, DeclarationMirror>>{};
+final _publicGetters = <ClassMirror, Map<Symbol, DeclarationMirror>> {};
 
 /**
  * Returns a map of public getters, including fields, of an instance of the
@@ -225,7 +227,7 @@ final _publicGetters = <ClassMirror, Map<Symbol, DeclarationMirror>>{};
 Map<Symbol, DeclarationMirror> _getPublicGetters(ClassMirror m) {
   var r = _publicGetters[m];
   if (r == null) {
-    r = <Symbol, DeclarationMirror>{};
+    r = <Symbol, DeclarationMirror> {};
     if (m != _objectMirror) {
       r.addAll(_getPublicSetters(m.superclass));
       m.declarations.forEach((k, v) {
@@ -242,15 +244,15 @@ Map<Symbol, DeclarationMirror> _getPublicGetters(ClassMirror m) {
  */
 bool _isPublicSetter(DeclarationMirror v) {
   return (v is VariableMirror && !v.isStatic && !v.isPrivate && !v.isFinal) ||
-         (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isSetter);
+      (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isSetter);
 }
 
 /**
  * Tests if [v] is a public getter or field.
  */
 bool _isPublicGetter(DeclarationMirror v) {
-  return (v is VariableMirror && !v.isStatic && !v.isPrivate) ||
-         (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isGetter);
+  return (v is VariableMirror && !v.isStatic && !v.isPrivate) || (v is
+      MethodMirror && !v.isStatic && !v.isPrivate && v.isGetter);
 }
 
 bool _isPrimitive(v) => v is num || v is bool || v is String;

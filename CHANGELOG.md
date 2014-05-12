@@ -1,3 +1,8 @@
+#### 1.2.1
+- Changed [_jsonToObject] to instantiate [List] and [Map] using
+  [ClassMirror.newInstance]
+- Added [TypeHelper] to retrieve the runtime type of a generic type
+
 #### 1.2.0
 - Added [jsonToObjects] and [objectToJsons]
    

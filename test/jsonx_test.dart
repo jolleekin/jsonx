@@ -106,7 +106,7 @@ main() {
   //----------- decode to generics ---------------
 
   List<String> list = decode('["green", "yellow", "orange"]',
-      type: <String>[].runtimeType);
+      type: const TypeHelper<List<String>>().type);
   assert(list.length == 3);
   assert(list[1] == 'yellow');
 
