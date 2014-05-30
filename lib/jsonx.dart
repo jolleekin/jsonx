@@ -153,7 +153,11 @@ _jsonToObject(json, mirror) {
   if (_isPrimitive(json)) return json;
 
   TypeMirror type;
-  var instance = mirror.newInstance(_EMTPY_SYMBOL, []);
+
+  // https://code.google.com/p/dart/issues/detail?id=15942
+  var instance = mirror.qualifiedName == #dart.core.List ?
+      reflect(mirror.newInstance(_EMTPY_SYMBOL, [0]).reflectee.toList()) :
+      mirror.newInstance(_EMTPY_SYMBOL, []);
   var reflectee = instance.reflectee;
 
   if (reflectee is List) {

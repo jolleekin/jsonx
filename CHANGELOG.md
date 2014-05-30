@@ -1,3 +1,5 @@
+#### 1.2.2
+- Added a work-around to bug [#15942](https://code.google.com/p/dart/issues/detail?id=15942)
 #### 1.2.1
 - Changed [_jsonToObject] to instantiate [List] and [Map] using
   [ClassMirror.newInstance]
