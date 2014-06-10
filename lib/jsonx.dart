@@ -233,7 +233,7 @@ Map<Symbol, DeclarationMirror> _getPublicGetters(ClassMirror m) {
   if (r == null) {
     r = <Symbol, DeclarationMirror> {};
     if (m != _objectMirror) {
-      r.addAll(_getPublicSetters(m.superclass));
+      r.addAll(_getPublicGetters(m.superclass));
       m.declarations.forEach((k, v) {
         if (_isPublicGetter(v)) r[k] = v;
       });
