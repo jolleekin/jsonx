@@ -1,3 +1,6 @@
+#### 1.2.5
+- Added [propertyNameDecoder] and [propertyNameEncoder]
+
 #### 1.2.4
 - Added @jsonIgnore, @jsonObject, and @jsonProperty annotations
 

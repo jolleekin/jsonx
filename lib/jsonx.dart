@@ -176,6 +176,48 @@ final Map<Type, ConvertFunction> objectToJsons = <Type, ConvertFunction> {
   DateTime: (input) => input.toString()
 };
 
+/**
+ * A function that returns the argument passed in.
+ */
+identityFunction(input) => input;
+
+/**
+ * Converts a string from PascalCase to camelCase.
+ *
+ * This function is intended to be used as a value of [propertyNameDecoder].
+ */
+String toCamelCase(String input) =>
+    input[0].toLowerCase() + input.substring(1);
+
+/**
+ * Converts a string from camelCase to PascalCase.
+ *
+ * This function is inntended to be used as a value of [propertyNameEncoder].
+ */
+String toPascalCase(String input) =>
+    input[0].toUpperCase() + input.substring(1);
+
+/**
+ * A function that globally controls how a JSON property name is decoded into an
+ * object property name.
+ *
+ * For example, to convert all property names to camelCase during decoding, set
+ * this variable to [toCamelCase].
+ *
+ * By default, this function leaves property names as is.
+ */
+ConvertFunction propertyNameDecoder = identityFunction;
+
+/**
+ * A function that globally controls how an object property name is encoded as
+ * a JSON property name.
+ *
+ * For example, to convert all property names to PascalCase during encoding, set
+ * this variable to [toPascalCase].
+ *
+ * By default, this function leaves property names as is.
+ */
+ConvertFunction propertyNameEncoder = identityFunction;
 
 
 final _typeMirrors = <Type, TypeMirror> {};
@@ -213,12 +255,13 @@ _jsonToObject(json, mirror) {
     var setters = _getPublicSetters(mirror);
 
     for (var key in json.keys) {
-      var name = new Symbol(key);
+      var decodedKey = propertyNameDecoder(key);
+      var name = new Symbol(decodedKey);
       var decl = setters[name];
       if (decl != null) {
         type = decl.type;
       } else {
-        decl = setters[new Symbol('$key=')];
+        decl = setters[new Symbol('$decodedKey=')];
         if (decl != null) {
           type = decl.parameters.first.type;
         } else {
@@ -352,7 +395,7 @@ __objectToJson(object) {
   getters.forEach((k, v) {
     if (!optIn && _hasAnnotation(v, jsonIgnore)) return;
     if (optIn && !_hasAnnotation(v, jsonProperty)) return;
-    var name = MirrorSystem.getName(k);
+    var name = propertyNameEncoder(MirrorSystem.getName(k));
     var value = instanceMirror.getField(k).reflectee;
     map[name] = __objectToJson(value);
   });

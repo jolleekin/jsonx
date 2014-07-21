@@ -250,3 +250,50 @@ var b = new B()
     ..b2 = 5;
 assert(encode(b) == '{"b1":10}');
 ````
+
+# Property Name Conversions
+A common problem of developing web applications is that the server APIs and the
+client application may use different languages with different naming conventions.
+For example, the client side uses Dart with camelCase property names while the
+server side uses C# with PascalCase property names. Hence, there must be a way
+for users to customize property name conversions during decoding and encoding.
+
+To support this customization, version 1.2.5 introduces two new global variables:
+```` dart
+/**
+ * A function that globally controls how a JSON property name is decoded into an
+ * object property name.
+ *
+ * For example, to convert all property names to camelCase during decoding, set
+ * this variable to [toCamelCase].
+ *
+ * By default, this function leaves property names as is.
+ */
+ConvertFunction propertyNameDecoder = identityFunction;
+
+/**
+ * A function that globally controls how an object property name is encoded as
+ * a JSON property name.
+ *
+ * For example, to convert all property names to PascalCase during encoding, set
+ * this variable to [toPascalCase].
+ *
+ * By default, this function leaves property names as is.
+ */
+ConvertFunction propertyNameEncoder = identityFunction;
+````
+
+Example
+```` dart
+propertyNameEncoder = toPascalCase;
+propertyNameDecoder = toCamelCase;
+
+var p = new Person()
+    ..key = '2'
+    ..name = 'Jerry'
+    ..age = 5;
+print(encode(p)); // {"Key":"2","Name":"Jerry","Age":5}
+
+var p2 = decode('{"Key":"2","Name":"Jerry","Age":5}', type: Person);
+print(p2.name);   // Jerry
+````

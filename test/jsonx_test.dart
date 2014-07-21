@@ -159,4 +159,12 @@ main() {
       ..b1 = 10
       ..b2 = 5;
   assert(encode(b) == '{"b1":10}');
+
+  //------------ Property name conversion --------------
+
+  propertyNameEncoder = toPascalCase;
+  propertyNameDecoder = toCamelCase;
+
+  assert(encode(a) == '{"A2":5}');
+  assert(decode('{"A2":5}', type: A).a2 == 5);
 }
