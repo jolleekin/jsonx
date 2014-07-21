@@ -216,7 +216,7 @@ _jsonToObject(json, mirror) {
     // TODO: Consider using [mirror.instanceMembers].
     var setters = _getPublicSetters(mirror);
 
-      var nameConvertType = nameJsonToObjects.keys.firstWhere((t)=>mirror.reflectedType.isSubtypeOf(reflectType(t)), orElse: ()=> null);
+   	var nameConvertType = nameJsonToObjects.keys.firstWhere((t)=>mirror.isSubtypeOf(reflectType(t)), orElse: ()=> null);
       NameFunction nameConvert = nameConvertType == null ? (i) => i : nameJsonToObjects[nameConvertType];
 
       for (var key in json.keys) {
