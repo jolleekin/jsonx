@@ -7,6 +7,44 @@ library jsonx;
 import 'dart:mirrors';
 import 'dart:convert';
 
+class _JsonObject {
+  const _JsonObject();
+}
+
+class _JsonIgnore {
+  const _JsonIgnore();
+}
+
+class _JsonProperty {
+  const _JsonProperty();
+}
+
+/**
+ * Marking a class with the annotation '@jsonObject' instructs the jsonx
+ * encoder to encode only fields and properties marked with the annotation
+ * '@jsonProperty'.
+ */
+const Object jsonObject = const _JsonObject();
+
+/**
+ * Marking a field or property with the annotation '@jsonIgnore' instructs the
+ * jsonx encoder not to encode that field or property.
+ *
+ * This annotation only has effects if the corresponding class is *NOT*
+ * annotated with '@jsonObject'.
+ */
+const Object jsonIgnore = const _JsonIgnore();
+
+/**
+ * Marking a field or property with the annotation '@jsonProperty' instructs the
+ * jsonx encoder to encode that field or property and ignore fields and
+ * properties without that annotation.
+ *
+ * This annotation only has effects if the corresponding class is annotated with
+ * '@jsonObject'.
+ */
+const Object jsonProperty = const _JsonProperty();
+
 /**
  * A helper class to retrieve the runtime type of a generic type.
  *
@@ -108,7 +146,7 @@ String encode(object) => _ENCODER.convert(object);
 
 
 
-typedef Convert(input);
+typedef ConvertFunction(input);
 
 /**
  * This object allows users to provide their own json-to-object converters for
@@ -120,7 +158,7 @@ typedef Convert(input);
  * NOTE:
  * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
  */
-final jsonToObjects = <Type, Convert> {
+final Map<Type, ConvertFunction> jsonToObjects = <Type, ConvertFunction> {
   DateTime: DateTime.parse
 };
 
@@ -134,7 +172,7 @@ final jsonToObjects = <Type, Convert> {
  * NOTE:
  * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
  */
-final objectToJsons = <Type, Convert> {
+final Map<Type, ConvertFunction> objectToJsons = <Type, ConvertFunction> {
   DateTime: (input) => input.toString()
 };
 
@@ -248,18 +286,28 @@ Map<Symbol, DeclarationMirror> _getPublicGetters(ClassMirror m) {
  */
 bool _isPublicSetter(DeclarationMirror v) {
   return (v is VariableMirror && !v.isStatic && !v.isPrivate && !v.isFinal) ||
-      (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isSetter);
+         (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isSetter);
 }
 
 /**
  * Tests if [v] is a public getter or field.
  */
 bool _isPublicGetter(DeclarationMirror v) {
-  return (v is VariableMirror && !v.isStatic && !v.isPrivate) || (v is
-      MethodMirror && !v.isStatic && !v.isPrivate && v.isGetter);
+  return (v is VariableMirror && !v.isStatic && !v.isPrivate) ||
+         (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isGetter);
 }
 
 bool _isPrimitive(v) => v is num || v is bool || v is String;
+
+/**
+ * Tests if [mirror] has a constant annotation which equals [annotation].
+ */
+bool _hasAnnotation(DeclarationMirror mirror, Object annotation) {
+  for (var meta in mirror.metadata) {
+    if (meta.reflectee == annotation) return true;
+  }
+  return false;
+}
 
 const _ENCODER = const JsonEncoder(_objectToJson);
 
@@ -297,14 +345,17 @@ __objectToJson(object) {
   }
 
   var instanceMirror = reflect(object);
+  var optIn = _hasAnnotation(instanceMirror.type, jsonObject);
 
   // TODO: Consider using [instanceMirror.type.instanceMembers].
   var getters = _getPublicGetters(instanceMirror.type);
-  for (var k in getters.keys) {
+  getters.forEach((k, v) {
+    if (!optIn && _hasAnnotation(v, jsonIgnore)) return;
+    if (optIn && !_hasAnnotation(v, jsonProperty)) return;
     var name = MirrorSystem.getName(k);
     var value = instanceMirror.getField(k).reflectee;
     map[name] = __objectToJson(value);
-  }
+  });
 
   return map;
 }

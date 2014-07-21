@@ -28,6 +28,23 @@ class Enum {
   static const TWO = const Enum._(2);
 }
 
+class A {
+  // Ignored by the jsonx encoder.
+  @jsonIgnore
+  int a1;
+
+  int a2;
+}
+
+@jsonObject
+class B {
+  @jsonProperty
+  int b1;
+
+  // Ignored by the jsonx encoder.
+  int b2;
+}
+
 main() {
   // ------------ set up --------------
 
@@ -130,4 +147,16 @@ main() {
 
   assert(encode(Enum.ONE) == '1');
   assert(decode('1', type: Enum) == Enum.ONE);
+
+  //------------ Annotations --------------
+
+  var a = new A()
+      ..a1 = 10
+      ..a2 = 5;
+  assert(encode(a) == '{"a2":5}');
+
+  var b = new B()
+      ..b1 = 10
+      ..b2 = 5;
+  assert(encode(b) == '{"b1":10}');
 }

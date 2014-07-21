@@ -1,3 +1,6 @@
+#### 1.2.4
+- Added @jsonIgnore, @jsonObject, and @jsonProperty annotations
+
 #### 1.2.3
 - Fixed a typo in [_getPublicGetters]
 

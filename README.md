@@ -158,7 +158,7 @@ methods is fixed and cannot be customized by users. However, starting from
 this version, customization is made possible thanks to the following two top
 level objects.
 ```` dart
-typedef Convert(input);
+typedef ConvertFunction(input);
 
 /**
  * This object allows users to provide their own json-to-object converters for
@@ -170,7 +170,7 @@ typedef Convert(input);
  * NOTE:
  * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
  */
-final jsonToObjects = <Type, Convert>{
+final Map<Type, ConvertFunction> jsonToObjects = <Type, ConvertFunction>{
   DateTime: DateTime.parse
 };
 
@@ -184,7 +184,7 @@ final jsonToObjects = <Type, Convert>{
  * NOTE:
  * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
  */
-final objectToJsons = <Type, Convert>{
+final Map<Type, ConvertFunction> objectToJsons = <Type, ConvertFunction>{
   DateTime: (input) => input.toString()
 };
 ````
@@ -211,4 +211,42 @@ jsonToObjects[Enum] = (int input) {
 
 assert(encode(Enum.ONE) == '1');
 assert(decode('1', type: Enum) == Enum.ONE);
+````
+
+# Annotations
+- `@jsonIgnore`: used against a field or property, instructing the jsonx encoder
+  to ignore that field or property
+- `@jsonObject`: used against a class, instructing the jsonx encoder to encode
+  only fields and properties marked with the annotation '@jsonProperty'
+- `@jsonProperty`: used against a field or property, instructing the jsonx
+  encoder to encode that field or property 
+
+Example
+```` dart
+class A {
+  // Ignored by the jsonx encoder.
+  @jsonIgnore
+  int a1;
+
+  int a2;
+}
+
+@jsonObject
+class B {
+  @jsonProperty
+  int b1;
+
+  // Ignored by the jsonx encoder.
+  int b2;
+}
+
+var a = new A()
+    ..a1 = 10
+    ..a2 = 5;
+assert(encode(a) == '{"a2":5}');
+
+var b = new B()
+    ..b1 = 10
+    ..b2 = 5;
+assert(encode(b) == '{"b1":10}');
 ````
