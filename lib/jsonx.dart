@@ -196,9 +196,6 @@ _jsonToObject(json, mirror) {
 
   TypeMirror type;
 
-  var nameConvertType = nameJsonToObjects.keys.firstWhere((t)=>type.isSubtypeOf(reflectType(t)), orElse: ()=> null);
-  NameFunction nameConvert = nameConvertType == null ? (i) => i : nameJsonToObjects[nameConvertType];
-
   // https://code.google.com/p/dart/issues/detail?id=15942
   var instance = mirror.qualifiedName == #dart.core.List ?
       reflect(mirror.newInstance(_EMTPY_SYMBOL, [0]).reflectee.toList()) :
@@ -219,7 +216,10 @@ _jsonToObject(json, mirror) {
     // TODO: Consider using [mirror.instanceMembers].
     var setters = _getPublicSetters(mirror);
 
-    for (var key in json.keys) {
+      var nameConvertType = nameJsonToObjects.keys.firstWhere((t)=>mirror.reflectedType.isSubtypeOf(reflectType(t)), orElse: ()=> null);
+      NameFunction nameConvert = nameConvertType == null ? (i) => i : nameJsonToObjects[nameConvertType];
+
+      for (var key in json.keys) {
       var name = new Symbol(nameConvert(key));
       var decl = setters[name];
       if (decl != null) {
