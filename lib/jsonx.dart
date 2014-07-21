@@ -159,7 +159,7 @@ typedef ConvertFunction(input);
  * Keys must not be [num], [int], [double], [bool], [String], [List], or [Map].
  */
 final Map<Type, ConvertFunction> jsonToObjects = <Type, ConvertFunction> {
-  DateTime: DateTime.parse
+	DateTime: DateTime.parse
 };
 
 /**
@@ -176,6 +176,10 @@ final Map<Type, ConvertFunction> objectToJsons = <Type, ConvertFunction> {
   DateTime: (input) => input.toString()
 };
 
+typedef String NameFunction(name);
+
+final Map<Type, NameFunction> nameJsonToObjects = <Type, NameFunction> {};
+final Map<Type, NameFunction> nameObjectToJsons = <Type, NameFunction> {};
 
 
 final _typeMirrors = <Type, TypeMirror> {};
@@ -212,8 +216,11 @@ _jsonToObject(json, mirror) {
     // TODO: Consider using [mirror.instanceMembers].
     var setters = _getPublicSetters(mirror);
 
-    for (var key in json.keys) {
-      var name = new Symbol(key);
+   	var nameConvertType = nameJsonToObjects.keys.firstWhere((t)=>mirror.isSubtypeOf(reflectType(t)), orElse: ()=> null);
+      NameFunction nameConvert = nameConvertType == null ? (i) => i : nameJsonToObjects[nameConvertType];
+
+      for (var key in json.keys) {
+      var name = new Symbol(nameConvert(key));
       var decl = setters[name];
       if (decl != null) {
         type = decl.type;
@@ -347,12 +354,15 @@ __objectToJson(object) {
   var instanceMirror = reflect(object);
   var optIn = _hasAnnotation(instanceMirror.type, jsonObject);
 
+  var nameConvertType = nameJsonToObjects.keys.firstWhere((t)=>instanceMirror.type.isSubtypeOf(reflectType(t)), orElse: ()=> null);
+  NameFunction nameConvert = nameConvertType == null ? (i) => i : nameJsonToObjects[nameConvertType];
+
   // TODO: Consider using [instanceMirror.type.instanceMembers].
   var getters = _getPublicGetters(instanceMirror.type);
   getters.forEach((k, v) {
     if (!optIn && _hasAnnotation(v, jsonIgnore)) return;
     if (optIn && !_hasAnnotation(v, jsonProperty)) return;
-    var name = MirrorSystem.getName(k);
+    var name = nameConvert(MirrorSystem.getName(k));
     var value = instanceMirror.getField(k).reflectee;
     map[name] = __objectToJson(value);
   });
