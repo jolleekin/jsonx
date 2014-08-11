@@ -1,5 +1,7 @@
+#### 1.2.7
+- Fixed a small formatting error in README.md
 #### 1.2.6
-- Update the documentation for decoding to generics
+- Updated the documentation for decoding to generics
 
 #### 1.2.5
 - Added [propertyNameDecoder] and [propertyNameEncoder]

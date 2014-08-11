@@ -42,6 +42,7 @@ print(p.name);  // Tom
 ````
 ### Decode to Generics
 Working with generics in Dart can be tricky because of the following two problems
+
 1\. Dart doesn't allow generic type literals to be passed as arguments
 ```` dart
 // Syntax error.
