@@ -94,9 +94,8 @@ class JsonxEncoder<T> extends Converter<T, String> {
  * The default [reviver] (when not provided) is the identity function.
  *
  * The optional [type] parameter specifies the type to which [text] should be
- * decoded. Since Dart doesn't allow passing a generic type as an argument, one must
- * create an instance of that generic type and pass the instance's runtimeType
- * as the value of [type].
+ * decoded. `type` **must have a default constructor**. To work with generics,
+ * use [TypeHelper].
  *
  * If [type] is omitted, this method is equivalent to [JSON.decode] in
  * **dart:convert** library.

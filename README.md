@@ -19,12 +19,10 @@ properties, or `null` for the final result.
 The default `reviver` (when not provided) is the identity function.
 
 The optional `type` parameter specifies the type to which `text` should be
-decoded. Since Dart doesn't allow passing a generic type as an argument, one must
-create an instance of that generic type and pass the instance's runtimeType
-as the value of `type`.
+decoded. `type` **must have a default constructor**.
 
-If `type` is omitted, this method is equivalent to `JSON.decode` in
-**dart:convert** library.
+If `type` is omitted, this method is equivalent to `JSON.decode` in package
+**dart:convert**.
 
 Example:
 ```` dart
@@ -41,9 +39,40 @@ class Person extends KeyedItem {
 Person p = decode('{ "key": "1", "name": "Tom", "age": 5 }', type: Person);
 print(p.key);   // 1
 print(p.name);  // Tom
+````
+### Decode to Generics
+Working with generics in Dart can be tricky because of the following two problems
+1\. Dart doesn't allow generic type literals to be passed as arguments
+```` dart
+// Syntax error.
+var list = decode('[1,2,3]', type: List<int>);
+````
+2\. The runtime types of the built-in `Map<E>` and `List<E>` do not have a default constructor
+```` dart
+// Exception: _GrowableList does not have a default constructor.
+var list = decode('[1, 2, 3]', type: <int>[].runtimeType);
 
-List<int> list = decode('[1,2,3]', type: <int>[].runtimeType);
-print(list[1]); // 2
+// Exception: _LinkedHashMap doesn't not have a default constructor.
+var map = decode('{"a": 1, "b": 2}', type: <String, int>{}.runtimeType);
+````
+To help users deal with these problems, the package exposes the following helper
+class
+```` dart
+/**
+ * A helper class to retrieve the runtime type of a generic type.
+ *
+ * For example, to retrive the type of `List<int>`, use
+ *     const TypeHelper<List<int>>().type
+ */
+class TypeHelper<T> {
+  Type get type => T;
+
+  const TypeHelper();
+}
+````
+Example:
+```` dart
+List<int> list = decode('[1, 2, 3]', type: const TypeHelper<List<int>>().type);
 ````
 # Encode an Object
 ```` dart
@@ -116,27 +145,6 @@ Example:
 var codec = new JsonxCodec<Person>();
 var p = codec.decode('{ "key": "1", "name": "Tom", "age": 5 }');
 var s = codec.encode(p);
-````
-# Work with generics
-Dart doesn't allow generic type literals to be passed as arguments, so the
-library exposes the following helper class to help user deal with that.
-```` dart
-/**
- * A helper class to retrieve the runtime type of a generic type.
- *
- * For example, to retrive the type of `List<int>`, use
- *     const TypeHelper<List<int>>().type
- */
-class TypeHelper<T> {
-  Type get type => T;
-
-  const TypeHelper();
-}
-````
-Example:
-```` dart
-List<String> list = decode('["green", "yellow", "orange"]',
-    type: const TypeHelper<List<String>>().type);
 ````
 # Customize the Behavior of Encoding and Decoding
 

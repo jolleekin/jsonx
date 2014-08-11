@@ -1,3 +1,6 @@
+#### 1.2.6
+- Update the documentation for decoding to generics
+
 #### 1.2.5
 - Added [propertyNameDecoder] and [propertyNameEncoder]
 
