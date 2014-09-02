@@ -34,6 +34,12 @@ class A {
   int a1;
 
   int a2;
+
+  // Ignored because of readonly.
+  final int a3 = 3;
+
+  // Ignored because of readonly.
+  int get a4 => 4;
 }
 
 @jsonObject
@@ -80,7 +86,7 @@ main() {
       '"country":"VIETNAM"'
     '}';
 
-  var expected = '{'
+  var expectedWithoutIndent = '{'
       '"key":"parent",'
       '"name":"parent",'
       '"birthday":"1970-06-01 00:00:00.000",'
@@ -100,11 +106,60 @@ main() {
       ']'
     '}';
 
+  var expectedWithIndent = '''
+{
+  "key": "parent",
+  "name": "parent",
+  "birthday": "1970-06-01 00:00:00.000",
+  "address": {
+    "line1": "123 JACKSON ST",
+    "line2": null,
+    "city": "DA NANG",
+    "state": null,
+    "country": "VIETNAM"
+  },
+  "children": [
+    {
+      "key": "child 1",
+      "name": "child 1",
+      "birthday": "2000-04-01 00:00:00.000",
+      "address": {
+        "line1": "123 JACKSON ST",
+        "line2": null,
+        "city": "DA NANG",
+        "state": null,
+        "country": "VIETNAM"
+      },
+      "children": null
+    },
+    {
+      "key": "child 2",
+      "name": "child 2",
+      "birthday": "2001-05-01 00:00:00.000",
+      "address": {
+        "line1": "123 JACKSON ST",
+        "line2": null,
+        "city": "DA NANG",
+        "state": null,
+        "country": "VIETNAM"
+      },
+      "children": null
+    }
+  ]
+}''';
+
+  //------------ encode with indent --------------
+
+  const INDENT = '  ';
+  var s00 = encode(parent1, indent: INDENT);
+  var s01 = const JsonxEncoder<Person>(indent: INDENT).convert(parent1);
+  var s02 = new JsonxCodec<Person>(indent: INDENT).encode(parent1);
+  assert(s00 == s01 && s00 == s02 && s00 == expectedWithIndent);
+
   //------------ encode --------------
 
   var s1 = encode(parent1);
-
-  assert(s1 == expected);
+  assert(s1 == expectedWithoutIndent);
 
   //------------ decode --------------
 
@@ -118,7 +173,7 @@ main() {
   //------------ re-encode --------------
 
   var s2 = encode(parent2);
-  assert(s2 == expected);
+  assert(s2 == expectedWithoutIndent);
 
   //----------- decode to generics ---------------
 
@@ -130,7 +185,7 @@ main() {
   //------------ JsonxCodec --------------
 
   var codec = new JsonxCodec<Person>();
-  assert(codec.encode(parent1) == expected);
+  assert(codec.encode(parent1) == expectedWithoutIndent);
   assert(codec.decode(s1).address.country == 'VIETNAM');
 
   //------------ Custom jsonToObject/objectToJson --------------

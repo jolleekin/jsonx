@@ -77,14 +77,17 @@ List<int> list = decode('[1, 2, 3]', type: const TypeHelper<List<int>>().type);
 ````
 # Encode an Object
 ```` dart
-String encode(object)
+String encode(object, {String indent})
 ````
 Encodes `object` as a JSON string.
+
+`indent` is used to produce a multi-line output. If `null`, the output
+is encoded as a single line.
 
 The encoding happens as below:
 
 1. Tries to encode `object` directly
-2. If (1) fails, tries to call `object.toJson()` to convert `object` into
+2. If (1) fails, tries to call `object.toJson` to convert `object` into
 an encodable value
 3. If (2) fails, tries to use mirrors to convert `object` into en encodable value
 
@@ -113,10 +116,46 @@ decoding and encoding. However, when there is a lot of encoding/decoding for a
 specific type, the following Codec API may be a better choice.
 ```` dart
 /**
+ * [JsonxCodec] encodes objects of type [T] to JSON strings and decodes JSON
+ * strings to objects of type [T].
+ */
+class JsonxCodec<T> extends Codec<T, String> {
+  /**
+   * Creates a [JsonxCodec] with the given indent and reviver.
+   *
+   * [indent] is used during encoding to produce a multi-line output. If `null`,
+   * the output is encoded as a single line.
+   *
+   * The [reviver] function is called once for each object or list
+   * property that has been parsed during decoding. The `key` argument is either
+   * the integer list index for a list property, the map string for object
+   * properties, or `null` for the final result.
+   *
+   * The default [reviver] (when not provided) is the identity function.
+   */
+  JsonxCodec({String indent, reviver(key, value)});
+
+  JsonxDecoder<T> get decoder;
+  JsonxEncoder<T> get encoder;
+}
+
+/**
  * This class converts JSON strings into objects of type [T].
  */
 class JsonxDecoder<T> extends Converter<String, T> {
+  /**
+   * Creates a [JsonxDecoder].
+   */
+  const JsonxDecoder({reviver(key, value)});
 
+  /**
+   * The reviver function.
+   */
+  final reviver;
+
+  /**
+   * Converts a JSON string into an object of type [T].
+   */
   T convert(String input);
 }
 
@@ -124,21 +163,28 @@ class JsonxDecoder<T> extends Converter<String, T> {
  * This class converts objects of type [T] into JSON strings.
  */
 class JsonxEncoder<T> extends Converter<T, String> {
+  /**
+   * Creates a [JsonxEncoder].
+   *
+   * [indent] is used to produce a multi-line output. If `null`, the output is
+   * encoded as a single line.
+   */
+  const JsonxEncoder({String indent});
 
+  /**
+   * The string used for indention.
+   *
+   * When generating a multi-line output, this string is inserted once at the
+   * beginning of each indented line for each level of indentation.
+   *
+   * If `null`, the output is encoded as a single line.
+   */
+  final String indent;
+
+  /**
+   * Converts an object of type [T] into a JSON string.
+   */
   String convert(T input);
-}
-
-/**
- * [JsonxCodec] encodes objects of type [T] to JSON strings and decodes JSON
- * strings to objects of type [T].
- */
-class JsonxCodec<T> extends Codec<T, String> {
-
-  String encode(T input);
-  T decode(String encoded);
-
-  JsonxDecoder<T> get decoder;
-  JsonxEncoder<T> get encoder;
 }
 ````
 Example:

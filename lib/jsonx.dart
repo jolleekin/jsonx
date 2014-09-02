@@ -62,8 +62,25 @@ class TypeHelper<T> {
  * strings to objects of type [T].
  */
 class JsonxCodec<T> extends Codec<T, String> {
-  final _decoder = new JsonxDecoder<T>();
-  final _encoder = new JsonxEncoder<T>();
+  final JsonxDecoder<T> _decoder;
+  final JsonxEncoder<T> _encoder;
+
+  /**
+   * Creates a [JsonxCodec] with the given indent and reviver.
+   *
+   * [indent] is used during encoding to produce a multi-line output. If `null`,
+   * the output is encoded as a single line.
+   *
+   * The [reviver] function is called once for each object or list
+   * property that has been parsed during decoding. The `key` argument is either
+   * the integer list index for a list property, the map string for object
+   * properties, or `null` for the final result.
+   *
+   * The default [reviver] (when not provided) is the identity function.
+   */
+  JsonxCodec({String indent, reviver(key, value)})
+      : _decoder = new JsonxDecoder<T>(reviver: reviver),
+        _encoder = new JsonxEncoder<T>(indent: indent);
 
   JsonxDecoder<T> get decoder => _decoder;
   JsonxEncoder<T> get encoder => _encoder;
@@ -73,14 +90,48 @@ class JsonxCodec<T> extends Codec<T, String> {
  * This class converts JSON strings into objects of type [T].
  */
 class JsonxDecoder<T> extends Converter<String, T> {
-  T convert(String input) => decode(input, type: T);
+  /**
+   * Creates a [JsonxDecoder].
+   */
+  const JsonxDecoder({this.reviver(key, value)});
+
+  /**
+   * The reviver function.
+   */
+  final reviver;
+
+  /**
+   * Converts a JSON string into an object of type [T].
+   */
+  T convert(String input) => decode(input, reviver: reviver, type: T);
 }
 
 /**
  * This class converts objects of type [T] into JSON strings.
  */
 class JsonxEncoder<T> extends Converter<T, String> {
-  String convert(T input) => encode(input);
+  /**
+   * Creates a [JsonxEncoder].
+   *
+   * [indent] is used to produce a multi-line output. If `null`, the output is
+   * encoded as a single line.
+   */
+  const JsonxEncoder({String this.indent});
+
+  /**
+   * The string used for indention.
+   *
+   * When generating a multi-line output, this string is inserted once at the
+   * beginning of each indented line for each level of indentation.
+   *
+   * If `null`, the output is encoded as a single line.
+   */
+  final String indent;
+
+  /**
+   * Converts an object of type [T] into a JSON string.
+   */
+  String convert(T input) => encode(input, indent: indent);
 }
 
 /**
@@ -123,9 +174,12 @@ decode(String text, {reviver(key, value), Type type}) {
 /**
  * Encodes [object] as a JSON string.
  *
+ * [indent] is used to produce a multi-line output. If `null`, the output is
+ * encoded as a single line.
+ *
  * The encoding happens as below:
  * 1. Tries to encode [object] directly
- * 2. If (1) fails, tries to call [object.toJson()] to convert [object] into
+ * 2. If (1) fails, tries to call [object.toJson] to convert [object] into
  * an encodable value
  * 3. If (2) fails, tries to use mirrors to convert [object] into en encodable
  * value
@@ -139,9 +193,12 @@ decode(String text, {reviver(key, value), Type type}) {
  *     }
  *
  *     var p = new Person('kin', 20);
- *     print(encode(p));
+ *     print(encode(p, indent: '  '));
  */
-String encode(object) => _ENCODER.convert(object);
+String encode(object, {String indent}) {
+  if (indent == null) return _ENCODER.convert(object);
+  return new JsonEncoder.withIndent(indent, _objectToJson).convert(object);
+}
 
 
 
@@ -250,105 +307,17 @@ _jsonToObject(json, mirror) {
       reflectee[key] = _jsonToObject(json[key], type);
     }
   } else {
-    // TODO: Consider using [mirror.instanceMembers].
-    var setters = _getPublicSetters(mirror);
+    var properties = _getPublicReadWriteProperties(mirror);
 
     for (var key in json.keys) {
       var decodedKey = propertyNameDecoder(key);
       var name = new Symbol(decodedKey);
-      var decl = setters[name];
-      if (decl != null) {
-        type = decl.type;
-      } else {
-        decl = setters[new Symbol('$decodedKey=')];
-        if (decl != null) {
-          type = decl.parameters.first.type;
-        } else {
-          continue;
-        }
-      }
-      instance.setField(name, _jsonToObject(json[key], type));
+      var property = properties[name];
+      if (property == null) continue;
+      instance.setField(name, _jsonToObject(json[key], property.type));
     }
   }
   return reflectee;
-}
-
-final _objectMirror = reflectClass(Object);
-
-final _publicSetters = <ClassMirror, Map<Symbol, DeclarationMirror>> {};
-
-/**
- * Returns a map of public setters, including fields, of an instance of the
- * class specified by [m].
- *
- * The map includes setters that are inherited as well as those introduced by
- * the class itself.
- */
-Map<Symbol, DeclarationMirror> _getPublicSetters(ClassMirror m) {
-  var r = _publicSetters[m];
-  if (r == null) {
-    r = <Symbol, DeclarationMirror> {};
-    if (m != _objectMirror) {
-      r.addAll(_getPublicSetters(m.superclass));
-      m.declarations.forEach((k, v) {
-        if (_isPublicSetter(v)) r[k] = v;
-      });
-    }
-  }
-  _publicSetters[m] = r;
-  return r;
-}
-
-final _publicGetters = <ClassMirror, Map<Symbol, DeclarationMirror>> {};
-
-/**
- * Returns a map of public getters, including fields, of an instance of the
- * class specified by [m].
- *
- * The map includes getters that are inherited as well as those introduced by
- * the class itself.
- */
-Map<Symbol, DeclarationMirror> _getPublicGetters(ClassMirror m) {
-  var r = _publicGetters[m];
-  if (r == null) {
-    r = <Symbol, DeclarationMirror> {};
-    if (m != _objectMirror) {
-      r.addAll(_getPublicGetters(m.superclass));
-      m.declarations.forEach((k, v) {
-        if (_isPublicGetter(v)) r[k] = v;
-      });
-    }
-  }
-  _publicGetters[m] = r;
-  return r;
-}
-
-/**
- * Tests if [v] is a public setter or field.
- */
-bool _isPublicSetter(DeclarationMirror v) {
-  return (v is VariableMirror && !v.isStatic && !v.isPrivate && !v.isFinal) ||
-         (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isSetter);
-}
-
-/**
- * Tests if [v] is a public getter or field.
- */
-bool _isPublicGetter(DeclarationMirror v) {
-  return (v is VariableMirror && !v.isStatic && !v.isPrivate) ||
-         (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isGetter);
-}
-
-bool _isPrimitive(v) => v is num || v is bool || v is String;
-
-/**
- * Tests if [mirror] has a constant annotation which equals [annotation].
- */
-bool _hasAnnotation(DeclarationMirror mirror, Object annotation) {
-  for (var meta in mirror.metadata) {
-    if (meta.reflectee == annotation) return true;
-  }
-  return false;
 }
 
 const _ENCODER = const JsonEncoder(_objectToJson);
@@ -390,8 +359,8 @@ __objectToJson(object) {
   var optIn = _hasAnnotation(instanceMirror.type, jsonObject);
 
   // TODO: Consider using [instanceMirror.type.instanceMembers].
-  var getters = _getPublicGetters(instanceMirror.type);
-  getters.forEach((k, v) {
+  var properties = _getPublicReadWriteProperties(instanceMirror.type);
+  properties.forEach((k, v) {
     if (!optIn && _hasAnnotation(v, jsonIgnore)) return;
     if (optIn && !_hasAnnotation(v, jsonProperty)) return;
     var name = propertyNameEncoder(MirrorSystem.getName(k));
@@ -400,4 +369,63 @@ __objectToJson(object) {
   });
 
   return map;
+}
+
+class _Property {
+  const _Property(this.name, this.type, this.metadata);
+
+  final Symbol name;
+  final TypeMirror type;
+  final List<InstanceMirror> metadata;
+}
+
+final _objectMirror = reflectClass(Object);
+
+final _publicReadWriteProperties = <ClassMirror, Map<Symbol, _Property>> {};
+
+Map<Symbol, _Property> _getPublicReadWriteProperties(ClassMirror m) {
+  var r = _publicReadWriteProperties[m];
+  if (r == null) {
+    r = <Symbol, _Property> {};
+    if (m != _objectMirror) {
+      r.addAll(_getPublicReadWriteProperties(m.superclass));
+      m.declarations.forEach((k, v) {
+        if (_isPublicField(v)) {
+          r[k] = new _Property(k, v.type, v.metadata);
+        } else if (_isPublicGetter(v) && _hasSetter(m, v)) {
+          r[k] = new _Property(k, v.returnType, v.metadata);
+        }
+      });
+    }
+  }
+  return r;
+}
+
+bool _hasSetter(ClassMirror cls, MethodMirror getter) {
+  var mirror = cls.declarations[_setterName(getter.simpleName)];
+  return mirror is MethodMirror && mirror.isSetter;
+}
+
+// https://code.google.com/p/dart/issues/detail?id=10029
+Symbol _setterName(Symbol getter) =>
+ new Symbol('${MirrorSystem.getName(getter)}=');
+
+bool _isPublicField(DeclarationMirror v) =>
+    v is VariableMirror && !v.isStatic && !v.isPrivate && !v.isFinal;
+
+bool _isPublicGetter(DeclarationMirror v) =>
+    (v is MethodMirror && !v.isStatic && !v.isPrivate && v.isGetter);
+
+bool _isPrimitive(v) => v is num || v is bool || v is String;
+
+/**
+ * Tests if [target] has a constant annotation which equals [annotation].
+ *
+ * [target] can be a [DeclarationMirror] or [_Property].
+ */
+bool _hasAnnotation(target, Object annotation) {
+  for (var meta in target.metadata) {
+    if (meta.reflectee == annotation) return true;
+  }
+  return false;
 }

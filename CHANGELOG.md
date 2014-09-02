@@ -1,5 +1,13 @@
+#### 2.0.0
+- **Breaking change**: readonly properties (final fields and getters without
+  a corresponding setter) are no longer encoded. Only public read/write
+  properties are encoded.
+- Added indentation support during encoding through `encode`, `JsonxEncoder`,
+  or `JsonxCodec`
+
 #### 1.2.7
 - Fixed a small formatting error in README.md
+
 #### 1.2.6
 - Updated the documentation for decoding to generics
 
