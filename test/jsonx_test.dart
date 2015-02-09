@@ -1,5 +1,7 @@
 import '../lib/jsonx.dart';
 
+import 'package:unittest/unittest.dart';
+
 class KeyedItem {
   String key;
 }
@@ -78,33 +80,9 @@ main() {
       ..address = address
       ..children = [child1, child2];
 
-  var addressEncoded = '{'
-      '"line1":"123 JACKSON ST",'
-      '"line2":null,'
-      '"city":"DA NANG",'
-      '"state":null,'
-      '"country":"VIETNAM"'
-    '}';
+  var addressEncoded = '{' '"line1":"123 JACKSON ST",' '"line2":null,' '"city":"DA NANG",' '"state":null,' '"country":"VIETNAM"' '}';
 
-  var expectedWithoutIndent = '{'
-      '"key":"parent",'
-      '"name":"parent",'
-      '"birthday":"1970-06-01 00:00:00.000",'
-      '"address":$addressEncoded,'
-      '"children":[{'
-        '"key":"child 1",'
-        '"name":"child 1",'
-        '"birthday":"2000-04-01 00:00:00.000",'
-        '"address":$addressEncoded,'
-        '"children":null'
-      '},{'
-        '"key":"child 2",'
-        '"name":"child 2",'
-        '"birthday":"2001-05-01 00:00:00.000",'
-        '"address":$addressEncoded,'
-        '"children":null}'
-      ']'
-    '}';
+  var expectedWithoutIndent = '{' '"key":"parent",' '"name":"parent",' '"birthday":"1970-06-01 00:00:00.000",' '"address":$addressEncoded,' '"children":[{' '"key":"child 1",' '"name":"child 1",' '"birthday":"2000-04-01 00:00:00.000",' '"address":$addressEncoded,' '"children":null' '},{' '"key":"child 2",' '"name":"child 2",' '"birthday":"2001-05-01 00:00:00.000",' '"address":$addressEncoded,' '"children":null}' ']' '}';
 
   var expectedWithIndent = '''
 {
@@ -148,78 +126,78 @@ main() {
   ]
 }''';
 
-  //------------ encode with indent --------------
+  test('encode with indent', () {
+    const INDENT = '  ';
+    var s00 = encode(parent1, indent: INDENT);
+    var s01 = const JsonxEncoder<Person>(indent: INDENT).convert(parent1);
+    var s02 = new JsonxCodec<Person>(indent: INDENT).encode(parent1);
+    expect(s00, equals(s01));
+    expect(s00, equals(s02));
+    expect(s00, equalsIgnoringCase(expectedWithIndent));
+  });
 
-  const INDENT = '  ';
-  var s00 = encode(parent1, indent: INDENT);
-  var s01 = const JsonxEncoder<Person>(indent: INDENT).convert(parent1);
-  var s02 = new JsonxCodec<Person>(indent: INDENT).encode(parent1);
-  assert(s00 == s01 && s00 == s02 && s00 == expectedWithIndent);
+  test('encode', () {
+    var s1 = encode(parent1);
+    expect(s1, equalsIgnoringCase(expectedWithoutIndent));
+  });
 
-  //------------ encode --------------
+  test('decode', () {
+    Person parent2 = decode(encode(parent1), type: Person);
+    expect(parent2.name, equalsIgnoringCase('parent'));
+    expect(parent2.birthday.year, equals(1970));
+    expect(parent2.children.first.name, equalsIgnoringCase('child 1'));
+    expect(parent2.children.first.birthday.month, equals(4));
+    expect(parent2.children.first.address.country, equalsIgnoringCase('VIETNAM'));
+  });
 
-  var s1 = encode(parent1);
-  assert(s1 == expectedWithoutIndent);
+  test('decode to generics', () {
+    List<String> list = decode('["green", "yellow", "orange"]', type: const TypeHelper<List<String>>().type);
+    expect(list.length, equals(3));
+    expect(list[1], equals('yellow'));
+  });
 
-  //------------ decode --------------
+  test('JsonxCodec', () {
+    var codec = new JsonxCodec<Person>();
+    expect(codec.encode(parent1), equalsIgnoringCase(expectedWithoutIndent));
+    expect(codec.decode(encode(parent1)).address.country, equalsIgnoringCase('VIETNAM'));
+  });
 
-  Person parent2 = decode(s1, type: Person);
-  assert(parent2.name == 'parent');
-  assert(parent2.birthday.year == 1970);
-  assert(parent2.children.first.name == 'child 1');
-  assert(parent2.children.first.birthday.month == 4);
-  assert(parent2.children.first.address.country == 'VIETNAM');
+  test('Custom jsonToObject/objectToJson', () {
+    // Register a converter that converts an [Enum] into an integer.
+    objectToJsons[Enum] = (Enum input) => input._id;
 
-  //------------ re-encode --------------
+    // Register a converter that converts an integer into an [Enum].
+    jsonToObjects[Enum] = (int input) {
+      if (input == 1) return Enum.ONE;
+      if (input == 2) return Enum.TWO;
+      throw new ArgumentError('Unknown enum value [$input]');
+    };
 
-  var s2 = encode(parent2);
-  assert(s2 == expectedWithoutIndent);
+    expect(encode(Enum.ONE), equals('1'));
+    expect(decode('1', type: Enum), equals(Enum.ONE));
+  });
 
-  //----------- decode to generics ---------------
+  test('Annotations', () {
+    var a = new A()
+        ..a1 = 10
+        ..a2 = 5;
+    expect(encode(a), equalsIgnoringCase('{"a2":5}'));
 
-  List<String> list = decode('["green", "yellow", "orange"]',
-      type: const TypeHelper<List<String>>().type);
-  assert(list.length == 3);
-  assert(list[1] == 'yellow');
+    var b = new B()
+        ..b1 = 10
+        ..b2 = 5;
+    expect(encode(b), equalsIgnoringCase('{"b1":10}'));
+  });
 
-  //------------ JsonxCodec --------------
+  test('Property name conversion', () {
+    var a = new A()
+        ..a1 = 10
+        ..a2 = 5;
 
-  var codec = new JsonxCodec<Person>();
-  assert(codec.encode(parent1) == expectedWithoutIndent);
-  assert(codec.decode(s1).address.country == 'VIETNAM');
+    propertyNameEncoder = toPascalCase;
+    propertyNameDecoder = toCamelCase;
 
-  //------------ Custom jsonToObject/objectToJson --------------
-
-  // Register a converter that converts an [Enum] into an integer.
-  objectToJsons[Enum] = (Enum input) => input._id;
-
-  // Register a converter that converts an integer into an [Enum].
-  jsonToObjects[Enum] = (int input) {
-    if (input == 1) return Enum.ONE;
-    if (input == 2) return Enum.TWO;
-    throw new ArgumentError('Unknown enum value [$input]');
-  };
-
-  assert(encode(Enum.ONE) == '1');
-  assert(decode('1', type: Enum) == Enum.ONE);
-
-  //------------ Annotations --------------
-
-  var a = new A()
-      ..a1 = 10
-      ..a2 = 5;
-  assert(encode(a) == '{"a2":5}');
-
-  var b = new B()
-      ..b1 = 10
-      ..b2 = 5;
-  assert(encode(b) == '{"b1":10}');
-
-  //------------ Property name conversion --------------
-
-  propertyNameEncoder = toPascalCase;
-  propertyNameDecoder = toCamelCase;
-
-  assert(encode(a) == '{"A2":5}');
-  assert(decode('{"A2":5}', type: A).a2 == 5);
+    expect(encode(a), equalsIgnoringCase('{"A2":5}'));
+    expect(decode('{"A2":5}', type: A).a2, equals(5));
+  });
 }

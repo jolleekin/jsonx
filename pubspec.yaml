@@ -3,3 +3,5 @@ version: 2.0.0
 author: Man Hoang <jolleekin@outlook.com>
 description: An extended JSON library that supports the encoding and decoding of arbitrary objects.
 homepage: https://github.com/jolleekin/jsonx
+dev_dependencies:
+  unittest: any
