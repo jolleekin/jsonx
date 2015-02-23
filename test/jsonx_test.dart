@@ -1,4 +1,7 @@
-import '../lib/jsonx.dart';
+library TestLibray;
+
+import 'package:jsonx/jsonx.dart';
+import 'dart:mirrors';
 
 import 'package:unittest/unittest.dart';
 
@@ -200,4 +203,41 @@ main() {
     expect(encode(a), equalsIgnoringCase('{"A2":5}'));
     expect(decode('{"A2":5}', type: A).a2, equals(5));
   });
+
+  test('For field type that is sub type of instance type, encodes and decodes correctly',(){
+    var parent = new Parent()..child = new ConcreteChild1();
+
+    jsonxUseTypeInformation = true;
+
+    var encodeResult = encode(parent);
+    var decodeResult = decode(encodeResult, type: Parent) as Parent;
+
+    expect(decodeResult.child, new isInstanceOf<ConcreteChild1>());
+  });
+
+
+  test('For property with a list of base type and contents of concrete types, encodes and decodes list correctly', () {
+
+    jsonxUseTypeInformation = true;
+
+    var list = new List<Child>()..add(new ConcreteChild1());
+
+    var encodeResult = encode(list);
+    var decodeResult = decode(encodeResult, type: new TypeHelper<List<Child>>().type);
+
+    expect(decodeResult[0], new isInstanceOf<ConcreteChild1>());
+  });
+
+}
+
+class Parent{
+  Child child;
+}
+
+abstract class Child{
+
+}
+
+class ConcreteChild1 extends Child{
+  String wooHoo;
 }

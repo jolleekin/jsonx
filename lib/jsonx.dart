@@ -253,6 +253,13 @@ String toCamelCase(String input) =>
 String toPascalCase(String input) =>
     input[0].toUpperCase() + input.substring(1);
 
+
+/**
+ * Specifies whether jsonx should include type information when encoding types that do not exactly match the type
+ * of the property.
+ */
+bool jsonxUseTypeInformation = false;
+
 /**
  * A function that globally controls how a JSON property name is decoded into an
  * object property name.
@@ -290,6 +297,9 @@ _jsonToObject(json, mirror) {
 
   TypeMirror type;
 
+  if(json != null && jsonxUseTypeInformation && json is Map && json.containsKey("__typeString"))
+    mirror = reflectClass(_getClassMirrorByName( json["__typeString"] ).reflectedType);
+
   // https://code.google.com/p/dart/issues/detail?id=15942
   var instance = mirror.qualifiedName == #dart.core.List ?
       reflect(mirror.newInstance(_EMTPY_SYMBOL, [0]).reflectee.toList()) :
@@ -318,6 +328,33 @@ _jsonToObject(json, mirror) {
     }
   }
   return reflectee;
+}
+
+ClassMirror _getClassMirrorByName(String className) {
+  if(className == null) {
+    return null;
+  }
+
+  var index = className.lastIndexOf('.');
+  var libraryName = '';
+  var name = className;
+  if(index > 0) {
+    libraryName = className.substring(0, index);
+    name = className.substring(index + 1);
+  }
+
+  LibraryMirror library;
+  if(libraryName.isEmpty) {
+    library = currentMirrorSystem().isolate.rootLibrary;
+  } else {
+    library = currentMirrorSystem().findLibrary(new Symbol(libraryName));
+  }
+
+  if(library == null) {
+    return null;
+  }
+
+  return library.declarations[new Symbol(name)];
 }
 
 const _ENCODER = const JsonEncoder(_objectToJson);
@@ -368,7 +405,14 @@ __objectToJson(object) {
     map[name] = __objectToJson(value);
   });
 
+  _appendTypeStringToJson(object, map);
+
   return map;
+}
+
+void _appendTypeStringToJson(value, json){
+  if(value != null && jsonxUseTypeInformation)
+    json["__typeString"] = MirrorSystem.getName(reflect(value).type.qualifiedName);
 }
 
 class _Property {
