@@ -286,6 +286,7 @@ ConvertFunction propertyNameEncoder = identityFunction;
 final _typeMirrors = <Type, TypeMirror> {};
 
 const _EMTPY_SYMBOL = const Symbol('');
+const String _TYPE_STRING_KEY = "__typeString";
 
 _jsonToObject(json, mirror) {
   if (json == null) return null;
@@ -297,8 +298,8 @@ _jsonToObject(json, mirror) {
 
   TypeMirror type;
 
-  if(json != null && jsonxUseTypeInformation && json is Map && json.containsKey("__typeString"))
-    mirror = reflectClass(_getClassMirrorByName( json["__typeString"] ).reflectedType);
+  if(json != null && jsonxUseTypeInformation && json is Map && json.containsKey(_TYPE_STRING_KEY))
+    mirror = reflectClass(_getClassMirrorByName( json[_TYPE_STRING_KEY] ).reflectedType);
 
   // https://code.google.com/p/dart/issues/detail?id=15942
   var instance = mirror.qualifiedName == #dart.core.List ?
@@ -320,11 +321,13 @@ _jsonToObject(json, mirror) {
     var properties = _getPublicReadWriteProperties(mirror);
 
     for (var key in json.keys) {
-      var decodedKey = propertyNameDecoder(key);
-      var name = new Symbol(decodedKey);
-      var property = properties[name];
-      if (property == null) continue;
-      instance.setField(name, _jsonToObject(json[key], property.type));
+      if(!(jsonxUseTypeInformation && key == _TYPE_STRING_KEY)) {
+        var decodedKey = propertyNameDecoder( key );
+        var name = new Symbol( decodedKey );
+        var property = properties[name];
+        if ( property == null ) continue;
+        instance.setField( name, _jsonToObject( json[key], property.type ) );
+      }
     }
   }
   return reflectee;
@@ -412,7 +415,7 @@ __objectToJson(object) {
 
 void _appendTypeStringToJson(value, json){
   if(value != null && jsonxUseTypeInformation)
-    json["__typeString"] = MirrorSystem.getName(reflect(value).type.qualifiedName);
+    json[_TYPE_STRING_KEY] = MirrorSystem.getName(reflect(value).type.qualifiedName);
 }
 
 class _Property {
