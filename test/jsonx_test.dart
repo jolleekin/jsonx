@@ -215,17 +215,36 @@ main() {
     expect(decodeResult.child, new isInstanceOf<ConcreteChild1>());
   });
 
+  group('jsonxUseTypeInformation tests', () {
 
-  test('For property with a list of base type and contents of concrete types, encodes and decodes list correctly', () {
+    setUp((){
+      jsonxUseTypeInformation = true;
+    });
 
-    jsonxUseTypeInformation = true;
+    tearDown(() {
+      jsonxUseTypeInformation = false;
+    });
 
-    var list = new List<Child>()..add(new ConcreteChild1());
+    test('Encodes and decodes list<abstractType> to list<concreteType> correctly', () {
+      var list = new List<Child>()..add(new ConcreteChild1());
+      var encodeResult = encode(list);
+      var decodeResult = decode(encodeResult, type: new TypeHelper<List<Child>>().type);
+      expect(decodeResult[0], new isInstanceOf<ConcreteChild1>());
+    });
 
-    var encodeResult = encode(list);
-    var decodeResult = decode(encodeResult, type: new TypeHelper<List<Child>>().type);
+    test('If no custom value for jsonxTypeKey is specified, outputs type information with \$type key', () {
+      var parent = new Parent();
+      var result = encode(parent);
+      expect(result.contains("\$type"), true);
+    });
 
-    expect(decodeResult[0], new isInstanceOf<ConcreteChild1>());
+    test('If custom value for jsonxTypeKey is specified, outputs type information with the desired key', () {
+      jsonxTypeKey = "__typeName";
+      var parent = new Parent();
+      var result = encode(parent);
+      expect(result.contains(jsonxTypeKey), true);
+    });
+
   });
 
 }

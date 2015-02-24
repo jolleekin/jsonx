@@ -255,10 +255,10 @@ String toPascalCase(String input) =>
 
 
 /**
- * Specifies whether jsonx should include type information when encoding types that do not exactly match the type
- * of the property.
+ * Specifies whether jsonx should include type information in the encoded json
  */
 bool jsonxUseTypeInformation = false;
+String jsonxTypeKey = _TYPE_STRING_KEY;
 
 /**
  * A function that globally controls how a JSON property name is decoded into an
@@ -286,7 +286,7 @@ ConvertFunction propertyNameEncoder = identityFunction;
 final _typeMirrors = <Type, TypeMirror> {};
 
 const _EMTPY_SYMBOL = const Symbol('');
-const String _TYPE_STRING_KEY = "__typeString";
+const String _TYPE_STRING_KEY = "\$type";
 
 _jsonToObject(json, mirror) {
   if (json == null) return null;
@@ -298,8 +298,8 @@ _jsonToObject(json, mirror) {
 
   TypeMirror type;
 
-  if(json != null && jsonxUseTypeInformation && json is Map && json.containsKey(_TYPE_STRING_KEY))
-    mirror = reflectClass(_getClassMirrorByName( json[_TYPE_STRING_KEY] ).reflectedType);
+  if(json != null && jsonxUseTypeInformation && json is Map && json.containsKey(jsonxTypeKey))
+    mirror = reflectClass(_getClassMirrorByName( json[jsonxTypeKey] ).reflectedType);
 
   // https://code.google.com/p/dart/issues/detail?id=15942
   var instance = mirror.qualifiedName == #dart.core.List ?
@@ -321,7 +321,7 @@ _jsonToObject(json, mirror) {
     var properties = _getPublicReadWriteProperties(mirror);
 
     for (var key in json.keys) {
-      if(!(jsonxUseTypeInformation && key == _TYPE_STRING_KEY)) {
+      if(!(jsonxUseTypeInformation && key == jsonxTypeKey)) {
         var decodedKey = propertyNameDecoder( key );
         var name = new Symbol( decodedKey );
         var property = properties[name];
@@ -398,6 +398,8 @@ __objectToJson(object) {
   var instanceMirror = reflect(object);
   var optIn = _hasAnnotation(instanceMirror.type, jsonObject);
 
+  _appendTypeStringToJson(object, map);
+
   // TODO: Consider using [instanceMirror.type.instanceMembers].
   var properties = _getPublicReadWriteProperties(instanceMirror.type);
   properties.forEach((k, v) {
@@ -408,14 +410,12 @@ __objectToJson(object) {
     map[name] = __objectToJson(value);
   });
 
-  _appendTypeStringToJson(object, map);
-
   return map;
 }
 
 void _appendTypeStringToJson(value, json){
   if(value != null && jsonxUseTypeInformation)
-    json[_TYPE_STRING_KEY] = MirrorSystem.getName(reflect(value).type.qualifiedName);
+    json[jsonxTypeKey] = MirrorSystem.getName(reflect(value).type.qualifiedName);
 }
 
 class _Property {
