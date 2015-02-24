@@ -1,4 +1,7 @@
-import '../lib/jsonx.dart';
+library TestLibray;
+
+import 'package:jsonx/jsonx.dart';
+import 'dart:mirrors';
 
 import 'package:unittest/unittest.dart';
 
@@ -200,4 +203,60 @@ main() {
     expect(encode(a), equalsIgnoringCase('{"A2":5}'));
     expect(decode('{"A2":5}', type: A).a2, equals(5));
   });
+
+  test('For field type that is sub type of instance type, encodes and decodes correctly',(){
+    var parent = new Parent()..child = new ConcreteChild1();
+
+    jsonxUseTypeInformation = true;
+
+    var encodeResult = encode(parent);
+    var decodeResult = decode(encodeResult, type: Parent) as Parent;
+
+    expect(decodeResult.child, new isInstanceOf<ConcreteChild1>());
+  });
+
+  group('jsonxUseTypeInformation tests', () {
+
+    setUp((){
+      jsonxUseTypeInformation = true;
+    });
+
+    tearDown(() {
+      jsonxUseTypeInformation = false;
+    });
+
+    test('Encodes and decodes list<abstractType> to list<concreteType> correctly', () {
+      var list = new List<Child>()..add(new ConcreteChild1());
+      var encodeResult = encode(list);
+      var decodeResult = decode(encodeResult, type: new TypeHelper<List<Child>>().type);
+      expect(decodeResult[0], new isInstanceOf<ConcreteChild1>());
+    });
+
+    test('If no custom value for jsonxTypeKey is specified, outputs type information with \$type key', () {
+      var parent = new Parent();
+      var result = encode(parent);
+      expect(result.contains("\$type"), true);
+    });
+
+    test('If custom value for jsonxTypeKey is specified, outputs type information with the desired key', () {
+      jsonxTypeKey = "__typeName";
+      var parent = new Parent();
+      var result = encode(parent);
+      expect(result.contains(jsonxTypeKey), true);
+    });
+
+  });
+
+}
+
+class Parent{
+  Child child;
+}
+
+abstract class Child{
+
+}
+
+class ConcreteChild1 extends Child{
+  String wooHoo;
 }
