@@ -167,7 +167,9 @@ decode(String text, {reviver(key, value), Type type}) {
   var json = JSON.decode(text, reviver: reviver);
   if (type == null) return json;
   var mirror = _typeMirrors[type];
-  if (mirror == null) mirror = _typeMirrors[type] = reflectType(type);
+  if (mirror == null) {
+    mirror = _typeMirrors[type] = reflectType(type);
+  }
   return _jsonToObject(json, mirror);
 }
 
@@ -283,10 +285,22 @@ const _EMTPY_SYMBOL = const Symbol('');
 _jsonToObject(json, mirror) {
   if (json == null) return null;
 
+  // Handle user defined converters.
+
   var convert = jsonToObjects[mirror.reflectedType];
   if (convert != null) return convert(json);
 
+  // Handle enums.
+
+  if (mirror.isEnum) {
+    return mirror.getField(#values).reflectee[json];
+  }
+
+  // Handle primitives.
+
   if (_isPrimitive(json)) return json;
+
+  // Handle complex types.
 
   TypeMirror type;
 
@@ -333,10 +347,21 @@ _objectToJson(object) {
 __objectToJson(object) {
   if (object == null) return null;
 
+  // Handle user defined converters.
+
   var convert = objectToJsons[object.runtimeType];
   if (convert != null) return convert(object);
 
+  // Handle primitives.
+
   if (_isPrimitive(object)) return object;
+
+  // Handle enums.
+
+  var mirror = reflectClass(object.runtimeType);
+  if (mirror.isEnum) return object.index;
+
+  // Handle lists.
 
   if (object is List) {
     var list = [];
@@ -348,12 +373,16 @@ __objectToJson(object) {
 
   var map = {};
 
+  // Handle maps.
+
   if (object is Map) {
     for (var key in object.keys) {
       map[key] = __objectToJson(object[key]);
     }
     return map;
   }
+
+  // Handle strongly typed objects.
 
   var instanceMirror = reflect(object);
   var optIn = _hasAnnotation(instanceMirror.type, jsonObject);

@@ -1,6 +1,6 @@
-import '../lib/jsonx.dart';
+import 'package:test/test.dart';
 
-import 'package:unittest/unittest.dart';
+import '../lib/jsonx.dart';
 
 class KeyedItem {
   String key;
@@ -26,9 +26,11 @@ class Enum {
 
   const Enum._(this._id);
 
-  static const ONE = const Enum._(1);
-  static const TWO = const Enum._(2);
+  static const one = const Enum._(1);
+  static const two = const Enum._(2);
 }
+
+enum Color { blue, green, red }
 
 class A {
   // Ignored by the jsonx encoder.
@@ -57,32 +59,58 @@ main() {
   // ------------ set up --------------
 
   var address = new Address()
-      ..line1 = '123 JACKSON ST'
-      ..city = 'DA NANG'
-      ..country = 'VIETNAM';
+    ..line1 = '123 JACKSON ST'
+    ..city = 'DA NANG'
+    ..country = 'VIETNAM';
 
   var child1 = new Person()
-      ..key = 'child 1'
-      ..name = 'child 1'
-      ..birthday = new DateTime(2000, 4, 1)
-      ..address = address;
+    ..key = 'child 1'
+    ..name = 'child 1'
+    ..birthday = new DateTime(2000, 4, 1)
+    ..address = address;
 
   var child2 = new Person()
-      ..key = 'child 2'
-      ..name = 'child 2'
-      ..birthday = new DateTime(2001, 5, 1)
-      ..address = address;
+    ..key = 'child 2'
+    ..name = 'child 2'
+    ..birthday = new DateTime(2001, 5, 1)
+    ..address = address;
 
   var parent1 = new Person()
-      ..key = 'parent'
-      ..name = 'parent'
-      ..birthday = new DateTime(1970, 6, 1)
-      ..address = address
-      ..children = [child1, child2];
+    ..key = 'parent'
+    ..name = 'parent'
+    ..birthday = new DateTime(1970, 6, 1)
+    ..address = address
+    ..children = [child1, child2];
 
-  var addressEncoded = '{' '"line1":"123 JACKSON ST",' '"line2":null,' '"city":"DA NANG",' '"state":null,' '"country":"VIETNAM"' '}';
+  var encodedAddress =
+      '{'
+        '"line1":"123 JACKSON ST",'
+        '"line2":null,'
+        '"city":"DA NANG",'
+        '"state":null,'
+        '"country":"VIETNAM"'
+      '}';
 
-  var expectedWithoutIndent = '{' '"key":"parent",' '"name":"parent",' '"birthday":"1970-06-01 00:00:00.000",' '"address":$addressEncoded,' '"children":[{' '"key":"child 1",' '"name":"child 1",' '"birthday":"2000-04-01 00:00:00.000",' '"address":$addressEncoded,' '"children":null' '},{' '"key":"child 2",' '"name":"child 2",' '"birthday":"2001-05-01 00:00:00.000",' '"address":$addressEncoded,' '"children":null}' ']' '}';
+  var expectedWithoutIndent =
+      '{'
+        '"key":"parent",'
+        '"name":"parent",'
+        '"birthday":"1970-06-01 00:00:00.000",'
+        '"address":$encodedAddress,'
+        '"children":[{'
+          '"key":"child 1",'
+          '"name":"child 1",'
+          '"birthday":"2000-04-01 00:00:00.000",'
+          '"address":$encodedAddress,'
+          '"children":null'
+        '},{'
+          '"key":"child 2",'
+          '"name":"child 2",'
+          '"birthday":"2001-05-01 00:00:00.000",'
+          '"address":$encodedAddress,'
+          '"children":null}'
+        ']'
+      '}';
 
   var expectedWithIndent = '''
 {
@@ -127,39 +155,41 @@ main() {
 }''';
 
   test('encode with indent', () {
-    const INDENT = '  ';
-    var s00 = encode(parent1, indent: INDENT);
-    var s01 = const JsonxEncoder<Person>(indent: INDENT).convert(parent1);
-    var s02 = new JsonxCodec<Person>(indent: INDENT).encode(parent1);
+    const indent = '  ';
+    var s00 = encode(parent1, indent: indent);
+    var s01 = const JsonxEncoder<Person>(indent: indent).convert(parent1);
+    var s02 = new JsonxCodec<Person>(indent: indent).encode(parent1);
     expect(s00, equals(s01));
     expect(s00, equals(s02));
-    expect(s00, equalsIgnoringCase(expectedWithIndent));
+    expect(s00, equals(expectedWithIndent));
   });
 
   test('encode', () {
     var s1 = encode(parent1);
-    expect(s1, equalsIgnoringCase(expectedWithoutIndent));
+    expect(s1, equals(expectedWithoutIndent));
   });
 
   test('decode', () {
-    Person parent2 = decode(encode(parent1), type: Person);
-    expect(parent2.name, equalsIgnoringCase('parent'));
+    var parent2 = decode(encode(parent1), type: Person) as Person;
+    expect(parent2.name, equals('parent'));
     expect(parent2.birthday.year, equals(1970));
-    expect(parent2.children.first.name, equalsIgnoringCase('child 1'));
+    expect(parent2.children.first.name, equals('child 1'));
     expect(parent2.children.first.birthday.month, equals(4));
-    expect(parent2.children.first.address.country, equalsIgnoringCase('VIETNAM'));
+    expect(parent2.children.first.address.country, equals('VIETNAM'));
   });
 
   test('decode to generics', () {
-    List<String> list = decode('["green", "yellow", "orange"]', type: const TypeHelper<List<String>>().type);
+    List<String> list = decode('["green", "yellow", "orange"]',
+        type: const TypeHelper<List<String>>().type);
     expect(list.length, equals(3));
     expect(list[1], equals('yellow'));
   });
 
   test('JsonxCodec', () {
     var codec = new JsonxCodec<Person>();
-    expect(codec.encode(parent1), equalsIgnoringCase(expectedWithoutIndent));
-    expect(codec.decode(encode(parent1)).address.country, equalsIgnoringCase('VIETNAM'));
+    expect(codec.encode(parent1), equals(expectedWithoutIndent));
+    expect(codec.decode(encode(parent1)).address.country,
+        equals('VIETNAM'));
   });
 
   test('Custom jsonToObject/objectToJson', () {
@@ -168,36 +198,44 @@ main() {
 
     // Register a converter that converts an integer into an [Enum].
     jsonToObjects[Enum] = (int input) {
-      if (input == 1) return Enum.ONE;
-      if (input == 2) return Enum.TWO;
+      if (input == 1) return Enum.one;
+      if (input == 2) return Enum.two;
       throw new ArgumentError('Unknown enum value [$input]');
     };
 
-    expect(encode(Enum.ONE), equals('1'));
-    expect(decode('1', type: Enum), equals(Enum.ONE));
+    expect(encode(Enum.one), equals('1'));
+    expect(decode('1', type: Enum), equals(Enum.one));
   });
 
   test('Annotations', () {
     var a = new A()
-        ..a1 = 10
-        ..a2 = 5;
-    expect(encode(a), equalsIgnoringCase('{"a2":5}'));
+      ..a1 = 10
+      ..a2 = 5;
+    expect(encode(a), equals('{"a2":5}'));
 
     var b = new B()
-        ..b1 = 10
-        ..b2 = 5;
-    expect(encode(b), equalsIgnoringCase('{"b1":10}'));
+      ..b1 = 10
+      ..b2 = 5;
+    expect(encode(b), equals('{"b1":10}'));
   });
 
   test('Property name conversion', () {
     var a = new A()
-        ..a1 = 10
-        ..a2 = 5;
+      ..a1 = 10
+      ..a2 = 5;
 
     propertyNameEncoder = toPascalCase;
     propertyNameDecoder = toCamelCase;
 
-    expect(encode(a), equalsIgnoringCase('{"A2":5}'));
+    expect(encode(a), equals('{"A2":5}'));
     expect(decode('{"A2":5}', type: A).a2, equals(5));
+
+    propertyNameDecoder = identityFunction;
+    propertyNameEncoder = identityFunction;
+  });
+
+  test('Enums', () {
+    expect(encode(Color.red), equals('2'));
+    expect(decode('1', type: Color), equals(Color.green));
   });
 }
