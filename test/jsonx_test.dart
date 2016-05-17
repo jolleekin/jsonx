@@ -55,6 +55,23 @@ class B {
   int b2;
 }
 
+class C {
+  @jsonIgnoreNull
+  int c1;
+
+  int c2;
+}
+
+@jsonObject
+class D {
+  @jsonProperty
+  @jsonIgnoreNull
+  int d1;
+
+  @jsonIgnoreNull
+  int d2;
+}
+
 main() {
   // ------------ set up --------------
 
@@ -237,5 +254,21 @@ main() {
   test('Enums', () {
     expect(encode(Color.red), equals('2'));
     expect(decode('1', type: Color), equals(Color.green));
+  });
+
+  test('ignoreNull without jsonObject', () {
+    var c = new C()
+      ..c1 = null
+      ..c2 = null;
+    expect(encode(c).contains("c1"), isFalse);
+    expect(encode(c).contains("c2"), isTrue);
+  });
+
+  test('ignoreNull with jsonObject', () {
+    var d = new D()
+      ..d1 = null
+      ..d2 = 5;
+    expect(encode(d).contains("d1"), isFalse);
+    expect(encode(d).contains("d2"), isFalse);
   });
 }

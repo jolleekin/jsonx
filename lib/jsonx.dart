@@ -15,6 +15,10 @@ class _JsonIgnore {
   const _JsonIgnore();
 }
 
+class _JsonIgnoreNull {
+  const _JsonIgnoreNull();
+}
+
 class _JsonProperty {
   const _JsonProperty();
 }
@@ -34,6 +38,13 @@ const Object jsonObject = const _JsonObject();
  * annotated with '@jsonObject'.
  */
 const Object jsonIgnore = const _JsonIgnore();
+
+/**
+ * Marking a field or property with the annotation '@jsonIgnoreNull' instructs
+ * the jsonx encoder not to encode that field or property if the value is equal
+ * to 'null'.
+ */
+const Object jsonIgnoreNull = const _JsonIgnoreNull();
 
 /**
  * Marking a field or property with the annotation '@jsonProperty' instructs the
@@ -394,6 +405,7 @@ __objectToJson(object) {
     if (optIn && !_hasAnnotation(v, jsonProperty)) return;
     var name = propertyNameEncoder(MirrorSystem.getName(k));
     var value = instanceMirror.getField(k).reflectee;
+    if (_hasAnnotation(v, jsonIgnoreNull) && value == null) return;
     map[name] = __objectToJson(value);
   });
 
