@@ -57,6 +57,8 @@ class TypeHelper<T> {
   const TypeHelper();
 }
 
+const JsonxCodec JSONX = const JsonxCodec();
+
 /**
  * [JsonxCodec] encodes objects of type [T] to JSON strings and decodes JSON
  * strings to objects of type [T].
