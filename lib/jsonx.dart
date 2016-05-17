@@ -62,8 +62,10 @@ class TypeHelper<T> {
  * strings to objects of type [T].
  */
 class JsonxCodec<T> extends Codec<T, String> {
-  final JsonxDecoder<T> _decoder;
-  final JsonxEncoder<T> _encoder;
+
+  final String indent;
+
+  final Function _reviver;
 
   /**
    * Creates a [JsonxCodec] with the given indent and reviver.
@@ -78,12 +80,11 @@ class JsonxCodec<T> extends Codec<T, String> {
    *
    * The default [reviver] (when not provided) is the identity function.
    */
-  JsonxCodec({String indent, reviver(key, value)})
-      : _decoder = new JsonxDecoder<T>(reviver: reviver),
-        _encoder = new JsonxEncoder<T>(indent: indent);
+  const JsonxCodec({String this.indent, reviver(key, value)})
+      : _reviver = reviver;
 
-  JsonxDecoder<T> get decoder => _decoder;
-  JsonxEncoder<T> get encoder => _encoder;
+  JsonxDecoder<T> get decoder => new JsonxDecoder<T>(reviver: _reviver);
+  JsonxEncoder<T> get encoder => new JsonxEncoder<T>(indent: indent);
 }
 
 /**
