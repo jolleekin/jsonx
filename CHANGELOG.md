@@ -1,3 +1,6 @@
+#### 2.0.2
+- Add @jsonIgnoreNull to support ignoring properties with null values when encoding
+
 #### 2.0.1
 - Add support for enums (enum values are currently encoded as integers)
 
