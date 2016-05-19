@@ -405,7 +405,7 @@ __objectToJson(object) {
     if (optIn && !_hasAnnotation(v, jsonProperty)) return;
     var name = propertyNameEncoder(MirrorSystem.getName(k));
     var value = instanceMirror.getField(k).reflectee;
-    if (_hasAnnotation(v, jsonIgnoreNull) && value == null) return;
+    if (value == null && _hasAnnotation(v, jsonIgnoreNull)) return;
     map[name] = __objectToJson(value);
   });
 
