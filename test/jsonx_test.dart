@@ -271,4 +271,11 @@ main() {
     expect(encode(d).contains("d1"), isFalse);
     expect(encode(d).contains("d2"), isFalse);
   });
+
+  test('Sets', () {
+    var set = new Set.from([1, 1, 1, 2, 3]);
+    expect(encode(set), equals('[1,2,3]'));
+    var type = new TypeHelper<Set<int>>().type;
+    expect(decode('[1,1,1,2,3]', type: type), orderedEquals([1, 2, 3]));
+  });
 }

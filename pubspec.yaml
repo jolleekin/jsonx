@@ -1,5 +1,5 @@
 name: jsonx
-version: 2.0.2
+version: 2.0.3
 author: Man Hoang <jolleekin@outlook.com>
 description: An extended JSON library that supports the encoding and decoding of arbitrary objects.
 homepage: https://github.com/jolleekin/jsonx

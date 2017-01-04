@@ -59,7 +59,7 @@ const Object jsonProperty = const _JsonProperty();
 /**
  * A helper class to retrieve the runtime type of a generic type.
  *
- * For example, to retrive the type of `List<int>`, use
+ * For example, to retrieve the type of `List<int>`, use
  *     const TypeHelper<List<int>>().type
  */
 class TypeHelper<T> {
@@ -209,7 +209,7 @@ decode(String text, {reviver(key, value), Type type}) {
  *     print(encode(p, indent: '  '));
  */
 String encode(object, {String indent}) {
-  if (indent == null) return _ENCODER.convert(object);
+  if (indent == null) return _defaultEncoder.convert(object);
   return new JsonEncoder.withIndent(indent, _objectToJson).convert(object);
 }
 
@@ -261,7 +261,7 @@ String toCamelCase(String input) =>
 /**
  * Converts a string from camelCase to PascalCase.
  *
- * This function is inntended to be used as a value of [propertyNameEncoder].
+ * This function is intended to be used as a value of [propertyNameEncoder].
  */
 String toPascalCase(String input) =>
     input[0].toUpperCase() + input.substring(1);
@@ -291,7 +291,7 @@ ConvertFunction propertyNameEncoder = identityFunction;
 
 final _typeMirrors = <Type, TypeMirror> {};
 
-const _EMTPY_SYMBOL = const Symbol('');
+const _emptySymbol = const Symbol('');
 
 _jsonToObject(json, mirror) {
   if (json == null) return null;
@@ -317,11 +317,11 @@ _jsonToObject(json, mirror) {
 
   // https://code.google.com/p/dart/issues/detail?id=15942
   var instance = mirror.qualifiedName == #dart.core.List ?
-      reflect(mirror.newInstance(_EMTPY_SYMBOL, [0]).reflectee.toList()) :
-      mirror.newInstance(_EMTPY_SYMBOL, []);
+      reflect(mirror.newInstance(_emptySymbol, [0]).reflectee.toList()) :
+      mirror.newInstance(_emptySymbol, []);
   var reflectee = instance.reflectee;
 
-  if (reflectee is List) {
+  if (reflectee is List || reflectee is Set) {
     type = mirror.typeArguments.single;
     for (var value in json) {
       reflectee.add(_jsonToObject(value, type));
@@ -345,7 +345,7 @@ _jsonToObject(json, mirror) {
   return reflectee;
 }
 
-const _ENCODER = const JsonEncoder(_objectToJson);
+const _defaultEncoder = const JsonEncoder(_objectToJson);
 
 _objectToJson(object) {
   try {
@@ -369,8 +369,14 @@ __objectToJson(object) {
 
   // Handle enums.
 
-  var mirror = reflectClass(object.runtimeType);
-  if (mirror.isEnum) return object.index;
+  try {
+    var mirror = reflectClass(object.runtimeType);
+    if (mirror.isEnum) return object.index;
+  } catch (_) {}
+
+  // Handle sets as lists.
+
+  if (object is Set) object = object.toList();
 
   // Handle lists.
 

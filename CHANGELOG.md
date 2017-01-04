@@ -1,3 +1,6 @@
+#### 2.0.3
+- Add support for `Set`
+
 #### 2.0.2
 - Add @jsonIgnoreNull to support ignoring properties with null values when encoding
 
